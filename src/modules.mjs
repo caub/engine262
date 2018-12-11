@@ -323,6 +323,7 @@ export class SourceTextModuleRecord extends CyclicModuleRecord {
     // Assert: module has been linked and declarations in its module environment have been instantiated.
     moduleCtx.VariableEnvironment = module.Environment;
     moduleCtx.LexicalEnvironment = module.Environment;
+    moduleCtx.callSite.isTopLevel = true;
     // Suspend the currently running execution context.
     surroundingAgent.executionContextStack.push(moduleCtx);
     const result = Evaluate_Module(module.ECMAScriptCode.body);

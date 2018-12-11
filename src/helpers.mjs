@@ -1,8 +1,8 @@
 import { surroundingAgent } from './engine.mjs';
 import { AbstractModuleRecord } from './modules.mjs';
-import { Value, Descriptor } from './value.mjs';
+import { Value, Descriptor, BuiltinFunctionValue } from './value.mjs';
 import { ToString, DefinePropertyOrThrow } from './abstract-ops/all.mjs';
-import { X } from './completion.mjs';
+import { X, AwaitFulfilledFunctions } from './completion.mjs';
 import { inspect } from './api.mjs';
 
 export class OutOfRange extends RangeError {
@@ -10,6 +10,172 @@ export class OutOfRange extends RangeError {
     super(`${fn}() argument out of range`);
 
     this.detail = detail;
+  }
+}
+
+export class CallSite {
+  constructor(context) {
+    this.context = context;
+    this.isToplevel = false;
+    this.isConstructor = false;
+    this.lineNumber = null;
+    this.columnNumber = null;
+    this.methodName = null;
+    this.evalOrigin = null;
+  }
+
+  isEval() {
+    return !!this.evalOrigin;
+  }
+
+  isNative() {
+    return this.context.Function instanceof BuiltinFunctionValue;
+  }
+
+  isAsync() {
+    if (this.context.Function !== Value.null) {
+      return this.context.Function.ECMAScriptCode && this.context.Function.ECMAScriptCode.async;
+    }
+    return false;
+  }
+
+  getThisValue() {
+    if (this.context.LexicalEnvironment.HasThisBinding() === Value.true) {
+      return this.context.LexicalEnvironment.GetThisBinding();
+    }
+    return null;
+  }
+
+  getFunctionName() {
+    if (this.context.Function !== Value.null) {
+      const name = this.context.Function.properties.get(new Value('name'));
+      if (name) {
+        return X(ToString(name.Value)).stringValue();
+      }
+    }
+    return null;
+  }
+
+  getSpecifier() {
+    if (this.context.ScriptOrModule instanceof AbstractModuleRecord) {
+      return this.context.ScriptOrModule.HostDefined.specifier;
+    }
+    return null;
+  }
+
+  getMethodName() {
+    const idx = surroundingAgent.executionContextStack.indexOf(this.context);
+    const parent = surroundingAgent.executionContextStack[idx - 1];
+    if (parent) {
+      return parent.callSite.methodName;
+    }
+    return null;
+  }
+
+  setLocation(node) {
+    const { line, column } = node.loc.start;
+    this.lineNumber = line;
+    this.columnNumber = column;
+    if (node.type === 'CallExpression' || node.type === 'NewExpression') {
+      if (node.callee.type === 'MemberExpression' || node.callee.type === 'Identifier') {
+        this.methodName = node.callee.sourceText();
+      }
+    }
+  }
+
+  copy(context = this.context) {
+    const c = new CallSite(context);
+    c.isToplevel = this.isToplevel;
+    c.isConstructor = this.isConstructor;
+    c.lineNumber = this.lineNumber;
+    c.columnNumber = this.columnNumber;
+    c.methodName = this.methodName;
+    c.evalOrigin = this.evalOrigin;
+    return c;
+  }
+
+  static loc(site) {
+    if (site.isNative()) {
+      return 'native';
+    }
+    let out = '';
+    const specifier = site.getSpecifier();
+    if (!specifier && site.isEval()) {
+      out += this.formatEvalOrigin(site, site.evalOrigin);
+    }
+    if (specifier) {
+      out += specifier;
+    } else {
+      out += '<anonymous>';
+    }
+    if (site.lineNumber !== null) {
+      out += `:${site.lineNumber}`;
+      if (site.columnNumber !== null) {
+        out += `:${site.columnNumber}`;
+      }
+    }
+    return out.trim();
+  }
+
+  static formatEvalOrigin(site, origin) {
+    const specifier = origin.getSpecifier();
+    if (specifier) {
+      return specifier;
+    }
+    let out = 'eval at ';
+
+    const name = site.getFunctionName();
+    if (name) {
+      out += name;
+    } else {
+      out += '<anonymous>';
+    }
+
+    if (origin.lineNumber !== null) {
+      out += `:${origin.lineNumber}`;
+      if (origin.columnNumber !== null) {
+        out += `:${origin.columnNumber}`;
+      }
+    }
+
+    out += ', ';
+
+    return out;
+  }
+
+  toString() {
+    const isAsync = this.isAsync();
+    const functionName = this.getFunctionName();
+    const isMethodCall = !(this.isToplevel || this.isConstructor);
+
+    let string = isAsync ? 'async ' : '';
+
+    if (isMethodCall) {
+      const methodName = this.getMethodName();
+      if (functionName) {
+        string += functionName;
+        if (methodName && functionName !== methodName && !methodName.endsWith(functionName)) {
+          string += ` [as ${methodName}]`;
+        }
+      } else if (methodName) {
+        string += methodName;
+      } else {
+        string += '<anonymous>';
+      }
+    } else if (this.isConstructor) {
+      string += 'new ';
+      if (functionName) {
+        string += functionName;
+      } else {
+        string += '<anonymous>';
+      }
+    } else if (functionName) {
+      string += functionName;
+    } else {
+      return `${string}${CallSite.loc(this)}`;
+    }
+
+    return `${string} (${CallSite.loc(this)})`;
   }
 }
 
@@ -43,26 +209,54 @@ export function resume(context, completion) {
   return value;
 }
 
-export function captureStack(O) {
-  const stack = surroundingAgent.executionContextStack
-    .filter((e) => e.Function !== Value.null)
-    .map((e) => {
-      let string = '\n  at ';
-      const functionName = e.Function.properties.get(new Value('name'));
-      if (functionName) {
-        string += X(ToString(functionName.Value)).stringValue();
+function inlineInspect(V) {
+  return inspect(V, surroundingAgent.currentRealmRecord, true);
+}
+
+const kMaxAsyncFrames = 8;
+function captureAsyncStackTrace(stack, promise) {
+  let added = 0;
+  while (added < kMaxAsyncFrames) {
+    if (promise.PromiseFulfillReactions.length !== 1) {
+      return;
+    }
+    const [reaction] = promise.PromiseFulfillReactions;
+    if (reaction.Handler.nativeFunction === AwaitFulfilledFunctions) {
+      const asyncContext = reaction.Handler.AsyncContext;
+      stack.push(asyncContext.callSite);
+      added += 1;
+      if ('PromiseState' in asyncContext.promiseCapability.Promise) {
+        promise = asyncContext.promiseCapability.Promise;
       } else {
-        string += '<anonymous>';
+        return;
       }
-      if (e.ScriptOrModule instanceof AbstractModuleRecord) {
-        string += e.ScriptOrModule.HostDefined.specifier;
+    } else {
+      if ('PromiseState' in reaction.Capability.Promise) {
+        promise = reaction.Capability.Promise;
+      } else {
+        return;
       }
-      return string;
-    })
-    .reverse();
+    }
+  }
+}
+
+export function captureStack(O) {
+  const stack = [];
+
+  for (const e of surroundingAgent.executionContextStack.slice(0, -1).reverse()) {
+    stack.push(e.callSite);
+    if (e.callSite.isToplevel) {
+      break;
+    }
+  }
+
+  if (stack[0].context.promiseCapability) {
+    stack.pop();
+    captureAsyncStackTrace(stack, stack[0].context.promiseCapability.Promise);
+  }
 
   const errorString = X(ToString(O)).stringValue();
-  const trace = `${errorString}${stack.join('')}`;
+  const trace = `${errorString}${stack.map((s) => `\n  at ${s}`).join('')}`;
 
   X(DefinePropertyOrThrow(O, new Value('stack'), Descriptor({
     Value: new Value(trace),
@@ -70,10 +264,6 @@ export function captureStack(O) {
     Enumerable: Value.false,
     Configurable: Value.false,
   })));
-}
-
-function inlineInspect(V) {
-  return inspect(V, surroundingAgent.currentRealmRecord, true);
 }
 
 const messages = {

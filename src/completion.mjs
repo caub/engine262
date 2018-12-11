@@ -125,7 +125,7 @@ export function EnsureCompletion(val) {
   return new NormalCompletion(val);
 }
 
-function AwaitFulfilledFunctions([value]) {
+export function AwaitFulfilledFunctions([value]) {
   const F = surroundingAgent.activeFunctionObject;
   const asyncContext = F.AsyncContext;
   const prevContext = surroundingAgent.runningExecutionContext;
@@ -136,7 +136,7 @@ function AwaitFulfilledFunctions([value]) {
   return Value.undefined;
 }
 
-function AwaitRejectedFunctions([reason]) {
+export function AwaitRejectedFunctions([reason]) {
   const F = surroundingAgent.activeFunctionObject;
   const asyncContext = F.AsyncContext;
   const prevContext = surroundingAgent.runningExecutionContext;

@@ -107,6 +107,7 @@ export function PerformEval(x, callerRealm, strictCaller, direct) {
   evalCtx.ScriptOrModule = ctx.ScriptOrModule;
   evalCtx.VariableEnvironment = varEnv;
   evalCtx.LexicalEnvironment = lexEnv;
+  evalCtx.callSite.evalOrigin = surroundingAgent.runningExecutionContext.callSite.copy();
   surroundingAgent.executionContextStack.push(evalCtx);
   let result = EvalDeclarationInstantiation(body, varEnv, lexEnv, strictEval);
   if (result.Type === 'normal') {

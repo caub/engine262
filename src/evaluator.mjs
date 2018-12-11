@@ -491,6 +491,8 @@ export function* Evaluate(Production) {
     surroundingAgent.hostDefinedOptions.onNodeEvaluation(Production, surroundingAgent.currentRealmRecord);
   }
 
+  surroundingAgent.runningExecutionContext.callSite.setLocation(Production);
+
   switch (true) {
     case isImportDeclaration(Production):
       return new NormalCompletion(undefined);

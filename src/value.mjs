@@ -290,6 +290,7 @@ export class BuiltinFunctionValue extends FunctionValue {
         const calleeRealm = F.Realm;
         calleeContext.Realm = calleeRealm;
         calleeContext.ScriptOrModule = F.ScriptOrModule;
+        calleeContext.callSite.isConstructor = true;
         // 8. Perform any necessary implementation-defined initialization of calleeContext.
         surroundingAgent.executionContextStack.push(calleeContext);
         const result = nativeCall(F, argumentsList, undefined, newTarget);
