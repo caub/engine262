@@ -31,29 +31,29 @@ import {
 // 25.1 #sec-iteration
 
 // 7.4.1 #sec-getiterator
-export function GetIterator(obj, hint, method) {
+export function* GetIterator(obj, hint, method) {
   if (!hint) {
     hint = 'sync';
   }
   Assert(hint === 'sync' || hint === 'async');
   if (!method) {
     if (hint === 'async') {
-      method = Q(GetMethod(obj, wellKnownSymbols.asyncIterator));
+      method = Q(yield* GetMethod(obj, wellKnownSymbols.asyncIterator));
       if (method === Value.undefined) {
-        const syncMethod = Q(GetMethod(obj, wellKnownSymbols.iterator));
-        const syncIteratorRecord = Q(GetIterator(obj, 'sync', syncMethod));
-        return Q(CreateAsyncFromSyncIterator(syncIteratorRecord));
+        const syncMethod = Q(yield* GetMethod(obj, wellKnownSymbols.iterator));
+        const syncIteratorRecord = Q(yield* GetIterator(obj, 'sync', syncMethod));
+        return Q(yield* CreateAsyncFromSyncIterator(syncIteratorRecord));
       }
     } else {
-      method = Q(GetMethod(obj, wellKnownSymbols.iterator));
+      method = Q(yield* GetMethod(obj, wellKnownSymbols.iterator));
     }
   }
-  const iterator = Q(Call(method, obj));
+  const iterator = Q(yield* Call(method, obj));
   if (Type(iterator) !== 'Object') {
     // TODO: throw with an error message
     return surroundingAgent.Throw('TypeError');
   }
-  const nextMethod = Q(GetV(iterator, new Value('next')));
+  const nextMethod = Q(yield* GetV(iterator, new Value('next')));
   const iteratorRecord = {
     Iterator: iterator,
     NextMethod: nextMethod,
@@ -63,12 +63,12 @@ export function GetIterator(obj, hint, method) {
 }
 
 // 7.4.2 #sec-iteratornext
-export function IteratorNext(iteratorRecord, value) {
+export function* IteratorNext(iteratorRecord, value) {
   let result;
   if (!value) {
-    result = Q(Call(iteratorRecord.NextMethod, iteratorRecord.Iterator, []));
+    result = Q(yield* Call(iteratorRecord.NextMethod, iteratorRecord.Iterator, []));
   } else {
-    result = Q(Call(iteratorRecord.NextMethod, iteratorRecord.Iterator, [value]));
+    result = Q(yield* Call(iteratorRecord.NextMethod, iteratorRecord.Iterator, [value]));
   }
   if (Type(result) !== 'Object') {
     // TODO: throw with an error message
@@ -78,21 +78,21 @@ export function IteratorNext(iteratorRecord, value) {
 }
 
 // 7.4.3 #sec-iteratorcomplete
-export function IteratorComplete(iterResult) {
+export function* IteratorComplete(iterResult) {
   Assert(Type(iterResult) === 'Object');
-  return EnsureCompletion(ToBoolean(Q(Get(iterResult, new Value('done')))));
+  return EnsureCompletion(ToBoolean(Q(yield* Get(iterResult, new Value('done')))));
 }
 
 // 7.4.4 #sec-iteratorvalue
-export function IteratorValue(iterResult) {
+export function* IteratorValue(iterResult) {
   Assert(Type(iterResult) === 'Object');
-  return EnsureCompletion(Q(Get(iterResult, new Value('value'))));
+  return EnsureCompletion(Q(yield* Get(iterResult, new Value('value'))));
 }
 
 // 7.4.5 #sec-iteratorstep
-export function IteratorStep(iteratorRecord) {
-  const result = Q(IteratorNext(iteratorRecord));
-  const done = Q(IteratorComplete(result));
+export function* IteratorStep(iteratorRecord) {
+  const result = Q(yield* IteratorNext(iteratorRecord));
+  const done = Q(yield* IteratorComplete(result));
   if (done === Value.true) {
     return EnsureCompletion(Value.false);
   }
@@ -100,17 +100,17 @@ export function IteratorStep(iteratorRecord) {
 }
 
 // 7.4.6 #sec-iteratorclose
-export function IteratorClose(iteratorRecord, completion) {
+export function* IteratorClose(iteratorRecord, completion) {
   // TODO: completion should be a Completion Record so this should not be necessary
   completion = EnsureCompletion(completion);
   Assert(Type(iteratorRecord.Iterator) === 'Object');
   Assert(completion instanceof Completion);
   const iterator = iteratorRecord.Iterator;
-  const ret = Q(GetMethod(iterator, new Value('return')));
+  const ret = Q(yield* GetMethod(iterator, new Value('return')));
   if (ret === Value.undefined) {
     return Completion(completion);
   }
-  const innerResult = EnsureCompletion(Call(ret, iterator, []));
+  const innerResult = EnsureCompletion(yield* Call(ret, iterator, []));
   if (completion.Type === 'throw') {
     return Completion(completion);
   }
@@ -129,11 +129,11 @@ export function* AsyncIteratorClose(iteratorRecord, completion) {
   Assert(Type(iteratorRecord.Iterator) === 'Object');
   Assert(completion instanceof Completion);
   const iterator = iteratorRecord.Iterator;
-  const ret = Q(GetMethod(iterator, new Value('return')));
+  const ret = Q(yield* GetMethod(iterator, new Value('return')));
   if (ret === Value.undefined) {
     return Completion(completion);
   }
-  let innerResult = EnsureCompletion(Call(ret, iterator, []));
+  let innerResult = EnsureCompletion(yield* Call(ret, iterator, []));
   if (innerResult.Type === 'normal') {
     innerResult = EnsureCompletion(yield* Await(innerResult.Value));
   }
@@ -151,16 +151,16 @@ export function* AsyncIteratorClose(iteratorRecord, completion) {
 }
 
 // 7.4.8 #sec-createiterresultobject
-export function CreateIterResultObject(value, done) {
+export function* CreateIterResultObject(value, done) {
   Assert(Type(done) === 'Boolean');
   const obj = ObjectCreate(surroundingAgent.intrinsic('%ObjectPrototype%'));
-  X(CreateDataProperty(obj, new Value('value'), value));
-  X(CreateDataProperty(obj, new Value('done'), done));
+  X(yield* CreateDataProperty(obj, new Value('value'), value));
+  X(yield* CreateDataProperty(obj, new Value('done'), done));
   return obj;
 }
 
 // 7.4.9 #sec-createlistiteratorRecord
-export function CreateListIteratorRecord(list) {
+export function* CreateListIteratorRecord(list) {
   const iterator = ObjectCreate(surroundingAgent.intrinsic('%IteratorPrototype%'), [
     'IteratedList',
     'ListIteratorNextIndex',
@@ -177,7 +177,7 @@ export function CreateListIteratorRecord(list) {
 }
 
 // 7.4.9.1 #sec-listiterator-next
-function ListIteratorNextSteps(args, { thisValue }) {
+function* ListIteratorNextSteps(args, { thisValue }) {
   const O = thisValue;
   Assert(Type(O) === 'Object');
   Assert('IteratedList' in O);
@@ -185,39 +185,44 @@ function ListIteratorNextSteps(args, { thisValue }) {
   const index = O.ListIteratorNextIndex;
   const len = list.length;
   if (index >= len) {
-    return CreateIterResultObject(Value.undefined, Value.true);
+    return yield* CreateIterResultObject(Value.undefined, Value.true);
   }
   O.ListIteratorNextIndex += 1;
-  return CreateIterResultObject(list[index], Value.false);
+  return yield* CreateIterResultObject(list[index], Value.false);
 }
 
 // 25.1.4.1 #sec-createasyncfromsynciterator
-export function CreateAsyncFromSyncIterator(syncIteratorRecord) {
+export function* CreateAsyncFromSyncIterator(syncIteratorRecord) {
   const asyncIterator = X(ObjectCreate(surroundingAgent.intrinsic('%AsyncFromSyncIteratorPrototype%'), [
     'SyncIteratorRecord',
   ]));
   asyncIterator.SyncIteratorRecord = syncIteratorRecord;
-  return Q(GetIterator(asyncIterator, 'async'));
+  return Q(yield* GetIterator(asyncIterator, 'async'));
 }
 
 // 25.1.4.2.5 #sec-async-from-sync-iterator-value-unwrap-functions
-function AsyncFromSyncIteratorValueUnwrapFunctions([value = Value.undefined]) {
+function* AsyncFromSyncIteratorValueUnwrapFunctions([value = Value.undefined]) {
   const F = this;
 
-  return X(CreateIterResultObject(value, F.Done));
+  return X(yield* CreateIterResultObject(value, F.Done));
 }
 
 // 25.1.4.4 #sec-async-from-sync-iterator-continuation
-export function AsyncFromSyncIteratorContinuation(result, promiseCapability) {
-  const done = IteratorComplete(result);
+export function* AsyncFromSyncIteratorContinuation(result, promiseCapability) {
+  const done = yield* IteratorComplete(result);
   IfAbruptRejectPromise(done, promiseCapability);
-  const value = IteratorValue(result);
+  const value = yield* IteratorValue(result);
   IfAbruptRejectPromise(value, promiseCapability);
-  const valueWrapperCapability = X(NewPromiseCapability(surroundingAgent.intrinsic('%Promise%')));
-  X(Call(valueWrapperCapability.Resolve, Value.undefined, [value]));
+  const valueWrapperCapability = X(yield* NewPromiseCapability(surroundingAgent.intrinsic('%Promise%')));
+  X(yield* Call(valueWrapperCapability.Resolve, Value.undefined, [value]));
   const steps = AsyncFromSyncIteratorValueUnwrapFunctions;
   const onFulfilled = CreateBuiltinFunction(steps, ['Done']);
   onFulfilled.Done = done;
-  X(PerformPromiseThen(valueWrapperCapability.Promise, onFulfilled, Value.undefined, promiseCapability));
+  X(yield* PerformPromiseThen(
+    valueWrapperCapability.Promise,
+    onFulfilled,
+    Value.undefined,
+    promiseCapability,
+  ));
   return promiseCapability.Promise;
 }

@@ -11,12 +11,12 @@ export function* Evaluate_ConditionalExpression({
   alternate: SecondAssignmentExpression,
 }) {
   const lref = yield* Evaluate(LogicalORExpression);
-  const lval = ToBoolean(Q(GetValue(lref)));
+  const lval = ToBoolean(Q(yield* GetValue(lref)));
   if (lval === Value.true) {
     const trueRef = yield* Evaluate(FirstAssignmentExpression);
-    return Q(GetValue(trueRef));
+    return Q(yield* GetValue(trueRef));
   } else {
     const falseRef = yield* Evaluate(SecondAssignmentExpression);
-    return Q(GetValue(falseRef));
+    return Q(yield* GetValue(falseRef));
   }
 }

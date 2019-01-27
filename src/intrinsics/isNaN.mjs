@@ -1,14 +1,13 @@
 import {
   ToNumber,
   CreateBuiltinFunction,
-  SetFunctionName,
-  SetFunctionLength,
 } from '../abstract-ops/all.mjs';
 import { Value } from '../value.mjs';
-import { Q, X } from '../completion.mjs';
+import { Q } from '../completion.mjs';
+import { setFunctionProps } from './Bootstrap.mjs';
 
-function IsNaN([number = Value.undefined]) {
-  const num = Q(ToNumber(number));
+function* IsNaN([number = Value.undefined]) {
+  const num = Q(yield* ToNumber(number));
   if (num.isNaN()) {
     return Value.true;
   }
@@ -17,7 +16,6 @@ function IsNaN([number = Value.undefined]) {
 
 export function CreateIsNaN(realmRec) {
   const fn = CreateBuiltinFunction(IsNaN, [], realmRec);
-  X(SetFunctionName(fn, new Value('isNaN')));
-  X(SetFunctionLength(fn, new Value(1)));
+  setFunctionProps(fn, new Value('isNaN'), new Value(1));
   realmRec.Intrinsics['%isNaN%'] = fn;
 }

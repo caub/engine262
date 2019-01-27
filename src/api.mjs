@@ -26,10 +26,10 @@ import {
   NormalCompletion,
   Q, X,
   ThrowCompletion,
-  EnsureCompletion,
+  // EnsureCompletion,
 } from './completion.mjs';
 import * as AbstractOps from './abstract-ops/all.mjs';
-import { OutOfRange } from './helpers.mjs';
+import { OutOfRange, unwind } from './helpers.mjs';
 
 export const Abstract = { ...AbstractOps, Type };
 const {
@@ -116,11 +116,11 @@ class APIRealm {
       }
       // END ScriptEvaluationJob
 
-      const res = Q(ScriptEvaluation(s));
+      return ScriptEvaluation(s);
 
-      runJobQueue();
+      // runJobQueue();
 
-      return EnsureCompletion(res);
+      // return EnsureCompletion(res);
     });
   }
 
@@ -257,7 +257,7 @@ export {
 
 const getObjectTag = (value, wrap) => {
   try {
-    const s = X(AbstractOps.Get(value, wellKnownSymbols.toStringTag)).stringValue();
+    const s = X(unwind(AbstractOps.Get(value, wellKnownSymbols.toStringTag))).stringValue();
     if (wrap) {
       return `[${s}] `;
     }
@@ -279,12 +279,12 @@ export function inspect(v, realm = surroundingAgent.currentRealmRecord, compact 
       try {
         const objectToString = realm.Intrinsics['%ObjProto_toString%'];
         if (toString.nativeFunction === objectToString.nativeFunction) {
-          return X(AbstractOps.Call(toString, value, [])).stringValue();
+          return X(unwind(AbstractOps.Call(toString, value, []))).stringValue();
         } else {
           const tag = getObjectTag(value, false) || 'Unknown';
-          const ctor = X(AbstractOps.Get(value, new Value('constructor')));
+          const ctor = X(unwind(AbstractOps.Get(value, new Value('constructor'))));
           if (Type(ctor) === 'Object') {
-            const ctorName = X(AbstractOps.Get(ctor, new Value('name'))).stringValue();
+            const ctorName = X(unwind(AbstractOps.Get(ctor, new Value('name')))).stringValue();
             if (ctorName !== '') {
               return `#<${ctorName}>`;
             }
@@ -292,7 +292,7 @@ export function inspect(v, realm = surroundingAgent.currentRealmRecord, compact 
           }
           return `[object ${tag}]`;
         }
-      } catch (e) {
+      } catch {
         return '[object Unknown]';
       }
     };
@@ -323,7 +323,7 @@ export function inspect(v, realm = surroundingAgent.currentRealmRecord, compact 
       inspected.add(value);
       if ('Call' in value) {
         const name = value.properties.get(new Value('name'));
-        if (name !== undefined) {
+        if (name !== undefined && name.Value && name.Value.stringValue && name.Value.stringValue()) {
           return `[Function: ${name.Value.stringValue()}]`;
         }
         return '[Function]';
@@ -338,11 +338,11 @@ export function inspect(v, realm = surroundingAgent.currentRealmRecord, compact 
 }`;
       }
       const errorToString = realm.Intrinsics['%ErrorPrototype%'].properties.get(new Value('toString')).Value;
-      const toString = Q(AbstractOps.Get(value, new Value('toString')));
+      const toString = Q(unwind(AbstractOps.Get(value, new Value('toString'))));
       if (toString.nativeFunction === errorToString.nativeFunction) {
-        let e = Q(AbstractOps.Get(value, new Value('stack')));
+        let e = Q(unwind(AbstractOps.Get(value, new Value('stack'))));
         if (!e.stringValue) {
-          e = X(AbstractOps.Call(toString, value));
+          e = X(unwind(AbstractOps.Call(toString, value)));
         }
         return e.stringValue();
       }
@@ -363,7 +363,7 @@ export function inspect(v, realm = surroundingAgent.currentRealmRecord, compact 
       }
       try {
         const tag = getObjectTag(value, true);
-        const keys = X(value.OwnPropertyKeys());
+        const keys = X(unwind(value.OwnPropertyKeys()));
         if (keys.length === 0) {
           return `${tag}{}`;
         }
@@ -372,7 +372,7 @@ export function inspect(v, realm = surroundingAgent.currentRealmRecord, compact 
         if (keys.length > 5) {
           indent += 1;
           for (const key of keys) {
-            const C = X(value.GetOwnProperty(key));
+            const C = X(unwind(value.GetOwnProperty(key)));
             out = `${out}\n${'  '.repeat(indent)}${innerInspect(key, false)}: ${innerInspect(C.Value)},`;
           }
           indent -= 1;
@@ -381,13 +381,13 @@ export function inspect(v, realm = surroundingAgent.currentRealmRecord, compact 
           const oc = compact;
           compact = true;
           for (const key of keys) {
-            const C = X(value.GetOwnProperty(key));
+            const C = X(unwind(value.GetOwnProperty(key)));
             out = `${out} ${innerInspect(key, false)}: ${innerInspect(C.Value)},`;
           }
           compact = oc;
           return `${out.slice(0, -1)} ${isArray ? ']' : '}'}`;
         }
-      } catch (e) {
+      } catch {
         return compactObject(toString);
       }
     }

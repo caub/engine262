@@ -32,14 +32,14 @@ function CreateTypedArrayConstructor(realmRec, TypedArray) {
   const info = typedArrayInfo.get(TypedArray);
   Assert(info !== undefined);
 
-  function TypedArrayConstructor(args, { NewTarget }) {
+  function* TypedArrayConstructor(args, { NewTarget }) {
     if (args.length === 0) {
       // 22.2.4.1 #sec-typedarray
       if (NewTarget === Value.undefined) {
         return surroundingAgent.Throw('TypeError', msg('ConstructorRequiresNew', TypedArray));
       }
       const constructorName = new Value(TypedArray);
-      return Q(AllocateTypedArray(constructorName, NewTarget, `%${TypedArray}Prototype%`, new Value(0)));
+      return Q(yield* AllocateTypedArray(constructorName, NewTarget, `%${TypedArray}Prototype%`, new Value(0)));
     } else if (Type(args[0]) !== 'Object') {
       // 22.2.4.2 #sec-typedarray-length
       const [length] = args;
@@ -47,9 +47,9 @@ function CreateTypedArrayConstructor(realmRec, TypedArray) {
       if (NewTarget === Value.undefined) {
         return surroundingAgent.Throw('TypeError', msg('ConstructorRequiresNew', TypedArray));
       }
-      const elementLength = Q(ToIndex(length));
+      const elementLength = Q(yield* ToIndex(length));
       const constructorName = new Value(TypedArray);
-      return Q(AllocateTypedArray(constructorName, NewTarget, `%${TypedArray}Prototype%`, elementLength));
+      return Q(yield* AllocateTypedArray(constructorName, NewTarget, `%${TypedArray}Prototype%`, elementLength));
     } else if ('TypedArrayName' in args[0]) {
       // 22.2.4.3 #sec-typedarray-typedarray
       const [typedArray] = args;
@@ -58,7 +58,7 @@ function CreateTypedArrayConstructor(realmRec, TypedArray) {
         return surroundingAgent.Throw('TypeError', msg('ConstructorRequiresNew', TypedArray));
       }
       const constructorName = new Value(TypedArray);
-      const O = Q(AllocateTypedArray(constructorName, NewTarget, `%${TypedArray}Prototype%`));
+      const O = Q(yield* AllocateTypedArray(constructorName, NewTarget, `%${TypedArray}Prototype%`));
       const srcArray = typedArray;
       const srcData = srcArray.ViewedArrayBuffer;
       if (IsDetachedBuffer(srcData)) {
@@ -74,15 +74,15 @@ function CreateTypedArrayConstructor(realmRec, TypedArray) {
       const elementSize = info.ElementSize;
       const byteLength = new Value(elementSize * elementLength.numberValue());
       // if (!IsSharedArrayBuffer(srcData)) {
-      const bufferConstructor = Q(SpeciesConstructor(srcData, surroundingAgent.intrinsic('%ArrayBuffer%')));
+      const bufferConstructor = Q(yield* SpeciesConstructor(srcData, surroundingAgent.intrinsic('%ArrayBuffer%')));
       // } else {
       //   bufferConstructor = surroundingAgent.intrinsic('%ArrayBuffer%');
       // }
       let data;
       if (SameValue(elementType, srcType) === Value.true) {
-        data = Q(CloneArrayBuffer(srcData, srcByteOffset, byteLength, bufferConstructor));
+        data = Q(yield* CloneArrayBuffer(srcData, srcByteOffset, byteLength, bufferConstructor));
       } else {
-        data = Q(AllocateArrayBuffer(bufferConstructor, byteLength));
+        data = Q(yield* AllocateArrayBuffer(bufferConstructor, byteLength));
         if (IsDetachedBuffer(srcData)) {
           return surroundingAgent.Throw('TypeError', msg('BufferDetached'));
         }
@@ -91,7 +91,14 @@ function CreateTypedArrayConstructor(realmRec, TypedArray) {
         let count = elementLength.numberValue();
         while (count > 0) {
           const value = GetValueFromBuffer(srcData, new Value(srcByteIndex), srcType.stringValue(), true, 'Unordered');
-          SetValueInBuffer(data, new Value(targetByteIndex), elementType.stringValue(), value, true, 'Unordered');
+          yield* SetValueInBuffer(
+            data,
+            new Value(targetByteIndex),
+            elementType.stringValue(),
+            value,
+            true,
+            'Unordered',
+          );
           srcByteIndex += srcElementSize;
           targetByteIndex += elementSize;
           count -= 1;
@@ -110,31 +117,31 @@ function CreateTypedArrayConstructor(realmRec, TypedArray) {
         return surroundingAgent.Throw('TypeError', msg('ConstructorRequiresNew', TypedArray));
       }
       const constructorName = new Value(TypedArray);
-      const O = Q(AllocateTypedArray(constructorName, NewTarget, `%${TypedArray}Prototype%`));
-      const usingIterator = Q(GetMethod(object, wellKnownSymbols.iterator));
+      const O = Q(yield* AllocateTypedArray(constructorName, NewTarget, `%${TypedArray}Prototype%`));
+      const usingIterator = Q(yield* GetMethod(object, wellKnownSymbols.iterator));
       if (usingIterator !== Value.undefined) {
-        const values = Q(IterableToList(object, usingIterator));
+        const values = Q(yield* IterableToList(object, usingIterator));
         const len = values.length;
-        Q(AllocateTypedArrayBuffer(O, new Value(len)));
+        Q(yield* AllocateTypedArrayBuffer(O, new Value(len)));
         let k = 0;
         while (k < len) {
-          const Pk = X(ToString(new Value(k)));
+          const Pk = X(yield* ToString(new Value(k)));
           const kValue = values.shift();
-          Q(Set(O, Pk, kValue, Value.true));
+          Q(yield* Set(O, Pk, kValue, Value.true));
           k += 1;
         }
         Assert(values.length === 0);
         return O;
       }
       const arrayLike = object;
-      const arrayLikeLength = Q(Get(arrayLike, new Value('length')));
-      const len = Q(ToLength(arrayLikeLength));
-      Q(AllocateTypedArrayBuffer(O, len));
+      const arrayLikeLength = Q(yield* Get(arrayLike, new Value('length')));
+      const len = Q(yield* ToLength(arrayLikeLength));
+      Q(yield* AllocateTypedArrayBuffer(O, len));
       let k = 0;
       while (k < len.numberValue()) {
-        const Pk = X(ToString(new Value(k)));
-        const kValue = Q(Get(arrayLike, Pk));
-        Q(Set(O, Pk, kValue, Value.true));
+        const Pk = X(yield* ToString(new Value(k)));
+        const kValue = Q(yield* Get(arrayLike, Pk));
+        Q(yield* Set(O, Pk, kValue, Value.true));
         k += 1;
       }
       return O;
@@ -146,15 +153,15 @@ function CreateTypedArrayConstructor(realmRec, TypedArray) {
         return surroundingAgent.Throw('TypeError', msg('ConstructorRequiresNew', TypedArray));
       }
       const constructorName = new Value(TypedArray);
-      const O = Q(AllocateTypedArray(constructorName, NewTarget, `%${TypedArray}Prototype%`));
+      const O = Q(yield* AllocateTypedArray(constructorName, NewTarget, `%${TypedArray}Prototype%`));
       const elementSize = info.ElementSize;
-      const offset = Q(ToIndex(byteOffset));
+      const offset = Q(yield* ToIndex(byteOffset));
       if (offset.numberValue() % elementSize !== 0) {
         return surroundingAgent.Throw('RangeError', msg('TypedArrayOffsetAlignment', TypedArray, elementSize));
       }
       let newLength;
       if (length !== undefined && length !== Value.undefined) {
-        newLength = Q(ToIndex(length)).numberValue();
+        newLength = Q(yield* ToIndex(length)).numberValue();
       }
       if (IsDetachedBuffer(buffer)) {
         return surroundingAgent.Throw('TypeError', msg('BufferDetached'));
@@ -189,7 +196,7 @@ function CreateTypedArrayConstructor(realmRec, TypedArray) {
   const taConstructor = BootstrapConstructor(realmRec, TypedArrayConstructor, TypedArray, 3, realmRec.Intrinsics[`%${TypedArray}Prototype%`], [
     ['BYTES_PER_ELEMENT', new Value(info.ElementSize), undefined, readonly],
   ]);
-  X(taConstructor.SetPrototypeOf(realmRec.Intrinsics['%TypedArray%']));
+  taConstructor.Prototype = realmRec.Intrinsics['%TypedArray%'];
   realmRec.Intrinsics[`%${TypedArray}%`] = taConstructor;
 }
 

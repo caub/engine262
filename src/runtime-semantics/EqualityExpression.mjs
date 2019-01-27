@@ -20,15 +20,15 @@ export function* Evaluate_EqualityExpression({
   right: RelationalExpression,
 }) {
   const lref = yield* Evaluate(EqualityExpression);
-  const lval = Q(GetValue(lref));
+  const lval = Q(yield* GetValue(lref));
   const rref = yield* Evaluate(RelationalExpression);
-  const rval = Q(GetValue(rref));
+  const rval = Q(yield* GetValue(rref));
 
   switch (operator) {
     case '==':
-      return AbstractEqualityComparison(rval, lval);
+      return yield* AbstractEqualityComparison(rval, lval);
     case '!=': {
-      const r = Q(AbstractEqualityComparison(rval, lval));
+      const r = Q(yield* AbstractEqualityComparison(rval, lval));
       if (r === Value.true) {
         return Value.false;
       } else {

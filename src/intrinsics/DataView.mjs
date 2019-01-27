@@ -13,14 +13,17 @@ import { msg } from '../helpers.mjs';
 import { BootstrapConstructor } from './Bootstrap.mjs';
 
 // 24.3.2 #sec-dataview-constructor
-function DataViewConstructor([buffer = Value.undefined, byteOffset = Value.undefined, byteLength = Value.undefined], { NewTarget }) {
+function* DataViewConstructor(
+  [buffer = Value.undefined, byteOffset = Value.undefined, byteLength = Value.undefined],
+  { NewTarget },
+) {
   if (Type(NewTarget) === 'Undefined') {
     return surroundingAgent.Throw('TypeError', msg('ConstructorRequiresNew', 'DataView'));
   }
   if (Type(buffer) !== 'Object' || !('ArrayBufferData' in buffer)) {
     return surroundingAgent.Throw('TypeError', msg('NotAnTypeObject', 'ArrayBuffer', buffer));
   }
-  const offset = Q(ToIndex(byteOffset)).numberValue();
+  const offset = Q(yield* ToIndex(byteOffset)).numberValue();
   if (IsDetachedBuffer(buffer)) {
     return surroundingAgent.Throw('TypeError', msg('BufferDetached'));
   }
@@ -32,12 +35,16 @@ function DataViewConstructor([buffer = Value.undefined, byteOffset = Value.undef
   if (byteLength === Value.undefined) {
     viewByteLength = bufferByteLength - offset;
   } else {
-    viewByteLength = Q(ToIndex(byteLength)).numberValue();
+    viewByteLength = Q(yield* ToIndex(byteLength)).numberValue();
     if (offset + viewByteLength > bufferByteLength) {
       return surroundingAgent.Throw('RangeError', msg('DataViewOOB'));
     }
   }
-  const O = Q(OrdinaryCreateFromConstructor(NewTarget, '%DataViewPrototype%', ['DataView', 'ViewedArrayBuffer', 'ByteLength', 'ByteOffset']));
+  const O = Q(yield* OrdinaryCreateFromConstructor(
+    NewTarget,
+    '%DataViewPrototype%',
+    ['DataView', 'ViewedArrayBuffer', 'ByteLength', 'ByteOffset'],
+  ));
   if (IsDetachedBuffer(buffer)) {
     return surroundingAgent.Throw('TypeError', msg('BufferDetached'));
   }

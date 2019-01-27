@@ -14,14 +14,14 @@ import {
 import { X } from '../completion.mjs';
 
 // 9.4.3.4 #sec-stringcreate
-export function StringCreate(value, prototype) {
+export function* StringCreate(value, prototype) {
   Assert(Type(value) === 'String');
   const S = new StringExoticObjectValue();
   S.StringData = value;
   S.Prototype = prototype;
   S.Extensible = Value.true;
   const length = new Value(value.stringValue().length);
-  X(DefinePropertyOrThrow(S, new Value('length'), Descriptor({
+  X(yield* DefinePropertyOrThrow(S, new Value('length'), Descriptor({
     Value: length,
     Writable: Value.false,
     Enumerable: Value.false,
@@ -30,13 +30,13 @@ export function StringCreate(value, prototype) {
   return S;
 }
 
-export function StringGetOwnProperty(S, P) {
+export function* StringGetOwnProperty(S, P) {
   Assert(Type(S) === 'Object' && 'StringData' in S);
   Assert(IsPropertyKey(P));
   if (Type(P) !== 'String') {
     return Value.undefined;
   }
-  const index = X(CanonicalNumericIndexString(P));
+  const index = X(yield* CanonicalNumericIndexString(P));
   if (Type(index) === 'Undefined') {
     return Value.undefined;
   }

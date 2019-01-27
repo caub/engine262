@@ -24,9 +24,9 @@ function thisSymbolValue(value) {
   return surroundingAgent.Throw('TypeError');
 }
 
-function Symbol_toString(argList, { thisValue }) {
+function* Symbol_toString(argList, { thisValue }) {
   const sym = Q(thisSymbolValue(thisValue));
-  return SymbolDescriptiveString(sym);
+  return yield* SymbolDescriptiveString(sym);
 }
 
 function Symbol_valueOf(argList, { thisValue }) {

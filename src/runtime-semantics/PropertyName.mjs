@@ -18,7 +18,7 @@ import { Value } from '../value.mjs';
 //     IdentifierName
 //     StringLiteral
 //     NumericLiteral
-function Evaluate_LiteralPropertyName(LiteralPropertyName) {
+function* Evaluate_LiteralPropertyName(LiteralPropertyName) {
   switch (true) {
     case isIdentifierName(LiteralPropertyName):
       return new Value(LiteralPropertyName.name);
@@ -26,7 +26,7 @@ function Evaluate_LiteralPropertyName(LiteralPropertyName) {
       return new Value(LiteralPropertyName.value);
     case isNumericLiteral(LiteralPropertyName): {
       const nbr = new Value(LiteralPropertyName.value);
-      return X(ToString(nbr));
+      return X(yield* ToString(nbr));
     }
 
     default:
@@ -39,8 +39,8 @@ function Evaluate_LiteralPropertyName(LiteralPropertyName) {
 function* Evaluate_ComputedPropertyName(ComputedPropertyName) {
   const AssignmentExpression = ComputedPropertyName;
   const exprValue = yield* Evaluate(AssignmentExpression);
-  const propName = Q(GetValue(exprValue));
-  return Q(ToPropertyKey(propName));
+  const propName = Q(yield* GetValue(exprValue));
+  return Q(yield* ToPropertyKey(propName));
 }
 
 // 12.2.6.7 #sec-object-initializer-runtime-semantics-evaluation
@@ -53,5 +53,5 @@ function* Evaluate_ComputedPropertyName(ComputedPropertyName) {
 export function* Evaluate_PropertyName(PropertyName, computed) {
   return computed
     ? yield* Evaluate_ComputedPropertyName(PropertyName)
-    : Evaluate_LiteralPropertyName(PropertyName);
+    : yield* Evaluate_LiteralPropertyName(PropertyName);
 }

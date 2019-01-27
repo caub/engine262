@@ -6,25 +6,25 @@ import { OutOfRange } from '../helpers.mjs';
 
 /* eslint-disable no-bitwise */
 
-export function EvaluateBinopValues_ShiftExpression(operator, lval, rval) {
+export function* EvaluateBinopValues_ShiftExpression(operator, lval, rval) {
   switch (operator) {
     case '<<': {
-      const lnum = Q(ToInt32(lval));
-      const rnum = Q(ToUint32(rval));
+      const lnum = Q(yield* ToInt32(lval));
+      const rnum = Q(yield* ToUint32(rval));
       const shiftCount = rnum.numberValue() & 0x1F;
       return new Value(lnum.numberValue() << shiftCount);
     }
 
     case '>>': {
-      const lnum = Q(ToInt32(lval));
-      const rnum = Q(ToUint32(rval));
+      const lnum = Q(yield* ToInt32(lval));
+      const rnum = Q(yield* ToUint32(rval));
       const shiftCount = rnum.numberValue() & 0x1F;
       return new Value(lnum.numberValue() >> shiftCount);
     }
 
     case '>>>': {
-      const lnum = Q(ToUint32(lval));
-      const rnum = Q(ToUint32(rval));
+      const lnum = Q(yield* ToUint32(lval));
+      const rnum = Q(yield* ToUint32(rval));
       const shiftCount = rnum.numberValue() & 0x1F;
       return new Value(lnum.numberValue() >>> shiftCount);
     }
@@ -44,8 +44,8 @@ export function* Evaluate_ShiftExpression({
   right: AdditiveExpression,
 }) {
   const lref = yield* Evaluate(ShiftExpression);
-  const lval = Q(GetValue(lref));
+  const lval = Q(yield* GetValue(lref));
   const rref = yield* Evaluate(AdditiveExpression);
-  const rval = Q(GetValue(rref));
-  return EvaluateBinopValues_ShiftExpression(operator, lval, rval);
+  const rval = Q(yield* GetValue(rref));
+  return yield* EvaluateBinopValues_ShiftExpression(operator, lval, rval);
 }

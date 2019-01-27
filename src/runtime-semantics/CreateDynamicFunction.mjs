@@ -56,7 +56,7 @@ const DynamicFunctionSourceTextPrefixes = {
 };
 
 // 19.2.1.1.1 #sec-createdynamicfunction
-export function CreateDynamicFunction(constructor, newTarget, kind, args) {
+export function* CreateDynamicFunction(constructor, newTarget, kind, args) {
   Assert(surroundingAgent.executionContextStack.length >= 2);
   const callerContext = surroundingAgent.executionContextStack[surroundingAgent.executionContextStack.length - 2];
   const callerRealm = callerContext.Realm;
@@ -99,17 +99,17 @@ export function CreateDynamicFunction(constructor, newTarget, kind, args) {
     bodyText = args[0];
   } else {
     const firstArg = args[0];
-    P = Q(ToString(firstArg)).stringValue();
+    P = Q(yield* ToString(firstArg)).stringValue();
     let k = 1;
     while (k < argCount - 1) {
       const nextArg = args[k];
-      const nextArgString = Q(ToString(nextArg));
+      const nextArgString = Q(yield* ToString(nextArg));
       P = `${P},${nextArgString.stringValue()}`;
       k += 1;
     }
     bodyText = args[k];
   }
-  bodyText = Q(ToString(bodyText)).stringValue();
+  bodyText = Q(yield* ToString(bodyText)).stringValue();
 
   let body;
   try {
@@ -156,14 +156,14 @@ export function CreateDynamicFunction(constructor, newTarget, kind, args) {
     },
   };
 
-  const proto = Q(GetPrototypeFromConstructor(newTarget, fallbackProto));
+  const proto = Q(yield* GetPrototypeFromConstructor(newTarget, fallbackProto));
   const F = FunctionAllocate(proto, strict, kind);
   const realmF = F.Realm;
   const scope = realmF.GlobalEnv;
-  FunctionInitialize(F, 'Normal', parameters, fabricatedFunctionNode, scope);
+  yield* FunctionInitialize(F, 'Normal', parameters, fabricatedFunctionNode, scope);
   if (kind === 'generator') {
     const prototype = ObjectCreate(surroundingAgent.intrinsic('%GeneratorPrototype%'));
-    X(DefinePropertyOrThrow(F, new Value('prototype'), Descriptor({
+    X(yield* DefinePropertyOrThrow(F, new Value('prototype'), Descriptor({
       Value: prototype,
       Writable: Value.true,
       Enumerable: Value.false,
@@ -171,16 +171,16 @@ export function CreateDynamicFunction(constructor, newTarget, kind, args) {
     })));
   } else if (kind === 'async generator') {
     const prototype = ObjectCreate(surroundingAgent.intrinsic('%AsyncGeneratorPrototype%'));
-    X(DefinePropertyOrThrow(F, new Value('prototype'), Descriptor({
+    X(yield* DefinePropertyOrThrow(F, new Value('prototype'), Descriptor({
       Value: prototype,
       Writable: Value.true,
       Enumerable: Value.false,
       Configurable: Value.false,
     })));
   } else if (kind === 'normal') {
-    MakeConstructor(F);
+    yield* MakeConstructor(F);
   }
-  SetFunctionName(F, new Value('anonymous'));
+  yield* SetFunctionName(F, new Value('anonymous'));
   const prefix = DynamicFunctionSourceTextPrefixes[kind];
   const sourceText = `${prefix} anonymous(${P}\u000A) {\u000A${bodyText}\u000A}`;
   F.SourceText = new Value(sourceText);

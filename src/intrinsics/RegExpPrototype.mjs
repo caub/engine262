@@ -28,7 +28,7 @@ import { Q, X } from '../completion.mjs';
 import { msg } from '../helpers.mjs';
 
 // 21.2.5.2 #sec-regexp.prototype.exec
-function RegExpProto_exec([string = Value.undefined], { thisValue }) {
+function* RegExpProto_exec([string = Value.undefined], { thisValue }) {
   const R = thisValue;
   if (Type(R) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'RegExp', R));
@@ -36,18 +36,18 @@ function RegExpProto_exec([string = Value.undefined], { thisValue }) {
   if (!('RegExpMatcher' in R)) {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'RegExp', R));
   }
-  const S = Q(ToString(string));
+  const S = Q(yield* ToString(string));
   return Q(RegExpBuiltinExec(R, S));
 }
 
 // 21.2.5.2.1 #sec-regexpexec
-function RegExpExec(R, S) {
+function* RegExpExec(R, S) {
   Assert(Type(R) === 'Object');
   Assert(Type(S) === 'String');
 
-  const exec = Q(Get(R, new Value('exec')));
+  const exec = Q(yield* Get(R, new Value('exec')));
   if (IsCallable(exec) === Value.true) {
-    const result = Q(Call(exec, R, [S]));
+    const result = Q(yield* Call(exec, R, [S]));
     if (Type(result) !== 'Object' && Type(result) !== 'Null') {
       // TODO: throw with an error message
       return surroundingAgent.Throw('TypeError');
@@ -61,13 +61,13 @@ function RegExpExec(R, S) {
 }
 
 // 21.2.5.2.2 #sec-regexpbuiltinexec
-function RegExpBuiltinExec(R, S) {
+function* RegExpBuiltinExec(R, S) {
   Assert('RegExpMatcher' in R);
   Assert(Type(S) === 'String');
   const length = S.stringValue().length;
   const lastIndexStr = new Value('lastIndex');
-  const lastIndexValue = Q(Get(R, lastIndexStr));
-  let lastIndex = Q(ToLength(lastIndexValue));
+  const lastIndexValue = Q(yield* Get(R, lastIndexStr));
+  let lastIndex = Q(yield* ToLength(lastIndexValue));
   const flags = R.OriginalFlags.stringValue();
   const global = flags.includes('g');
   const sticky = flags.includes('y');
@@ -81,14 +81,14 @@ function RegExpBuiltinExec(R, S) {
   while (matchSucceeded === false) {
     if (lastIndex.numberValue() > length) {
       if (global || sticky) {
-        Q(Set(R, lastIndexStr, new Value(0), Value.true));
+        Q(yield* Set(R, lastIndexStr, new Value(0), Value.true));
       }
       return Value.null;
     }
     r = matcher(S, lastIndex);
     if (r === null) {
       if (sticky) {
-        Q(Set(R, lastIndexStr, new Value(0), Value.true));
+        Q(yield* Set(R, lastIndexStr, new Value(0), Value.true));
         return Value.null;
       }
       lastIndex = AdvanceStringIndex(S, lastIndex, fullUnicode ? Value.true : Value.false);
@@ -105,17 +105,17 @@ function RegExpBuiltinExec(R, S) {
   }
 
   if (global || sticky) {
-    Q(Set(R, lastIndexStr, e, Value.true));
+    Q(yield* Set(R, lastIndexStr, e, Value.true));
   }
 
   const n = r.captures.length;
   Assert(n < (2 ** 32) - 1);
-  const A = X(ArrayCreate(new Value(n + 1)));
+  const A = X(yield* ArrayCreate(new Value(n + 1)));
   // Assert: The value of A's "length" property is n + 1.
-  X(CreateDataProperty(A, new Value('index'), lastIndex));
-  X(CreateDataProperty(A, new Value('input'), S));
+  X(yield* CreateDataProperty(A, new Value('index'), lastIndex));
+  X(yield* CreateDataProperty(A, new Value('input'), S));
   const matchedSubstr = S.stringValue().substring(lastIndex.numberValue(), e.numberValue());
-  X(CreateDataProperty(A, new Value('0'), new Value(matchedSubstr)));
+  X(yield* CreateDataProperty(A, new Value('0'), new Value(matchedSubstr)));
 
   let groups;
   if (R.GroupName) {
@@ -123,7 +123,7 @@ function RegExpBuiltinExec(R, S) {
   } else {
     groups = Value.undefined;
   }
-  X(CreateDataProperty(A, new Value('groups'), groups));
+  X(yield* CreateDataProperty(A, new Value('groups'), groups));
   for (let i = 1; i <= n; i += 1) {
     const captureI = r.captures[i - 1];
     let captureValue;
@@ -136,7 +136,7 @@ function RegExpBuiltinExec(R, S) {
       // Assert: captureI is a List of code units.
       captureValue = new Value(captureI.reduce((acc, charCode) => acc + String.fromCharCode(charCode), ''));
     }
-    X(CreateDataProperty(A, X(ToString(new Value(i))), captureValue));
+    X(yield* CreateDataProperty(A, X(yield* ToString(new Value(i))), captureValue));
     // TODO
   }
 
@@ -173,7 +173,7 @@ function AdvanceStringIndex(S, index, unicode) {
 }
 
 // 21.2.5.3 #sec-get-regexp.prototype.dotall
-function RegExpProto_dotAllGetter(args, { thisValue }) {
+function* RegExpProto_dotAllGetter(args, { thisValue }) {
   const R = thisValue;
   if (Type(R) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'RegExp', R));
@@ -192,33 +192,33 @@ function RegExpProto_dotAllGetter(args, { thisValue }) {
 }
 
 // 21.2.5.4 #sec-get-regexp.prototype.flags
-function RegExpProto_flagsGetter(args, { thisValue }) {
+function* RegExpProto_flagsGetter(args, { thisValue }) {
   const R = thisValue;
   if (Type(R) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'RegExp', R));
   }
   let result = '';
-  const global = ToBoolean(Q(Get(R, new Value('global'))));
+  const global = ToBoolean(Q(yield* Get(R, new Value('global'))));
   if (global === Value.true) {
     result += 'g';
   }
-  const ignoreCase = ToBoolean(Q(Get(R, new Value('ignoreCase'))));
+  const ignoreCase = ToBoolean(Q(yield* Get(R, new Value('ignoreCase'))));
   if (ignoreCase === Value.true) {
     result += 'i';
   }
-  const multiline = ToBoolean(Q(Get(R, new Value('multiline'))));
+  const multiline = ToBoolean(Q(yield* Get(R, new Value('multiline'))));
   if (multiline === Value.true) {
     result += 'm';
   }
-  const dotAll = ToBoolean(Q(Get(R, new Value('dotAll'))));
+  const dotAll = ToBoolean(Q(yield* Get(R, new Value('dotAll'))));
   if (dotAll === Value.true) {
     result += 's';
   }
-  const unicode = ToBoolean(Q(Get(R, new Value('unicode'))));
+  const unicode = ToBoolean(Q(yield* Get(R, new Value('unicode'))));
   if (unicode === Value.true) {
     result += 'u';
   }
-  const sticky = ToBoolean(Q(Get(R, new Value('sticky'))));
+  const sticky = ToBoolean(Q(yield* Get(R, new Value('sticky'))));
   if (sticky === Value.true) {
     result += 'y';
   }
@@ -226,7 +226,7 @@ function RegExpProto_flagsGetter(args, { thisValue }) {
 }
 
 // 21.2.5.5 #sec-get-regexp.prototype.global
-function RegExpProto_globalGetter(args, { thisValue }) {
+function* RegExpProto_globalGetter(args, { thisValue }) {
   const R = thisValue;
   if (Type(R) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'RegExp', R));
@@ -245,7 +245,7 @@ function RegExpProto_globalGetter(args, { thisValue }) {
 }
 
 // 21.2.5.6 #sec-get-regexp.prototype.ignorecase
-function RegExpProto_ignoreCaseGetter(args, { thisValue }) {
+function* RegExpProto_ignoreCaseGetter(args, { thisValue }) {
   const R = thisValue;
   if (Type(R) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'RegExp', R));
@@ -264,20 +264,20 @@ function RegExpProto_ignoreCaseGetter(args, { thisValue }) {
 }
 
 // 21.2.5.7 #sec-get-regexp.prototype-@@match
-function RegExpProto_match([string = Value.undefined], { thisValue }) {
+function* RegExpProto_match([string = Value.undefined], { thisValue }) {
   const rx = thisValue;
   if (Type(rx) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'RegExp', rx));
   }
-  const S = Q(ToString(string));
+  const S = Q(yield* ToString(string));
 
-  const global = ToBoolean(Q(Get(rx, new Value('global'))));
+  const global = ToBoolean(Q(yield* Get(rx, new Value('global'))));
   if (global === Value.false) {
     return Q(RegExpExec(rx, S));
   } else {
-    const fullUnicode = ToBoolean(Q(Get(rx, new Value('unicode'))));
-    Q(Set(rx, new Value('lastIndex'), new Value(0), Value.true));
-    const A = X(ArrayCreate(new Value(0)));
+    const fullUnicode = ToBoolean(Q(yield* Get(rx, new Value('unicode'))));
+    Q(yield* Set(rx, new Value('lastIndex'), new Value(0), Value.true));
+    const A = X(yield* ArrayCreate(new Value(0)));
     let n = 0;
     while (true) {
       const result = Q(RegExpExec(rx, S));
@@ -287,15 +287,15 @@ function RegExpProto_match([string = Value.undefined], { thisValue }) {
         }
         return A;
       } else {
-        const firstResult = Q(Get(result, new Value('0')));
-        const matchStr = Q(ToString(firstResult));
-        const status = CreateDataProperty(A, X(ToString(new Value(n))), matchStr);
+        const firstResult = Q(yield* Get(result, new Value('0')));
+        const matchStr = Q(yield* ToString(firstResult));
+        const status = yield* CreateDataProperty(A, X(yield* ToString(new Value(n))), matchStr);
         Assert(status === Value.true);
         if (matchStr.stringValue() === '') {
-          const lastIndex = Q(Get(rx, new Value('lastIndex')));
-          const thisIndex = Q(ToLength(lastIndex));
+          const lastIndex = Q(yield* Get(rx, new Value('lastIndex')));
+          const thisIndex = Q(yield* ToLength(lastIndex));
           const nextIndex = AdvanceStringIndex(S, thisIndex, fullUnicode);
-          Q(Set(rx, new Value('lastIndex'), nextIndex, Value.true));
+          Q(yield* Set(rx, new Value('lastIndex'), nextIndex, Value.true));
         }
         n += 1;
       }
@@ -304,7 +304,7 @@ function RegExpProto_match([string = Value.undefined], { thisValue }) {
 }
 
 // 21.2.5.8 #sec-get-regexp.prototype.multiline
-function RegExpProto_multilineGetter(args, { thisValue }) {
+function* RegExpProto_multilineGetter(args, { thisValue }) {
   const R = thisValue;
   if (Type(R) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'RegExp', R));
@@ -323,22 +323,22 @@ function RegExpProto_multilineGetter(args, { thisValue }) {
 }
 
 // 21.2.5.9 #sec-get-regexp.prototype-@@replace
-function RegExpProto_replace([string = Value.undefined, replaceValue = Value.undefined], { thisValue }) {
+function* RegExpProto_replace([string = Value.undefined, replaceValue = Value.undefined], { thisValue }) {
   const rx = thisValue;
   if (Type(rx) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'RegExp', rx));
   }
-  const S = Q(ToString(string));
+  const S = Q(yield* ToString(string));
   const lengthS = S.stringValue().length;
   const functionalReplace = IsCallable(replaceValue);
   if (functionalReplace === Value.false) {
-    replaceValue = Q(ToString(replaceValue));
+    replaceValue = Q(yield* ToString(replaceValue));
   }
-  const global = ToBoolean(Q(Get(rx, new Value('global'))));
+  const global = ToBoolean(Q(yield* Get(rx, new Value('global'))));
   let fullUnicode;
   if (global === Value.true) {
-    fullUnicode = ToBoolean(Q(Get(rx, new Value('unicode'))));
-    Q(Set(rx, new Value('lastIndex'), new Value(0), Value.true));
+    fullUnicode = ToBoolean(Q(yield* Get(rx, new Value('unicode'))));
+    Q(yield* Set(rx, new Value('lastIndex'), new Value(0), Value.true));
   }
 
   const results = [];
@@ -352,13 +352,13 @@ function RegExpProto_replace([string = Value.undefined, replaceValue = Value.und
       if (global === Value.false) {
         done = true;
       } else {
-        const firstResult = Q(Get(result, new Value('0')));
-        const matchStr = Q(ToString(firstResult));
+        const firstResult = Q(yield* Get(result, new Value('0')));
+        const matchStr = Q(yield* ToString(firstResult));
         if (matchStr.stringValue() === '') {
-          const lastIndex = Q(Get(rx, new Value('lastIndex')));
-          const thisIndex = Q(ToLength(lastIndex));
+          const lastIndex = Q(yield* Get(rx, new Value('lastIndex')));
+          const thisIndex = Q(yield* ToLength(lastIndex));
           const nextIndex = AdvanceStringIndex(S, thisIndex, fullUnicode);
-          Q(Set(rx, new Value('lastIndex'), nextIndex, Value.true));
+          Q(yield* Set(rx, new Value('lastIndex'), nextIndex, Value.true));
         }
       }
     }
@@ -367,30 +367,30 @@ function RegExpProto_replace([string = Value.undefined, replaceValue = Value.und
   let accumulatedResult = '';
   let nextSourcePosition = 0;
   for (const result of results) {
-    const resultLength = Q(Get(result, new Value('length')));
-    let nCaptures = Q(ToLength(resultLength)).numberValue();
+    const resultLength = Q(yield* Get(result, new Value('length')));
+    let nCaptures = Q(yield* ToLength(resultLength)).numberValue();
     nCaptures = Math.max(nCaptures - 1, 0);
 
-    const firstResult = Q(Get(result, new Value('0')));
-    const matched = Q(ToString(firstResult));
+    const firstResult = Q(yield* Get(result, new Value('0')));
+    const matched = Q(yield* ToString(firstResult));
     const matchLength = matched.stringValue().length;
 
-    const resultIndex = Q(Get(result, new Value('index')));
-    let position = Q(ToInteger(resultIndex));
+    const resultIndex = Q(yield* Get(result, new Value('index')));
+    let position = Q(yield* ToInteger(resultIndex));
     position = new Value(Math.max(Math.min(position.numberValue(), lengthS), 0));
 
     let n = 1;
     const captures = [];
     while (n <= nCaptures) {
-      let capN = Q(Get(result, X(ToString(new Value(n)))));
+      let capN = Q(yield* Get(result, X(yield* ToString(new Value(n)))));
       if (capN !== Value.undefined) {
-        capN = Q(ToString(capN));
+        capN = Q(yield* ToString(capN));
       }
       captures.push(capN);
       n += 1;
     }
 
-    const namedCaptures = Q(Get(result, new Value('groups')));
+    const namedCaptures = Q(yield* Get(result, new Value('groups')));
 
     let replacement;
     if (functionalReplace === Value.true) {
@@ -400,8 +400,8 @@ function RegExpProto_replace([string = Value.undefined, replaceValue = Value.und
       if (namedCaptures !== Value.undefined) {
         replacerArgs.push(namedCaptures);
       }
-      const replValue = Q(Call(replaceValue, Value.undefined, replacerArgs));
-      replacement = Q(ToString(replValue));
+      const replValue = Q(yield* Call(replaceValue, Value.undefined, replacerArgs));
+      replacement = Q(yield* ToString(replValue));
     } else {
       replacement = GetSubstitution(matched, S, position, captures, namedCaptures, replaceValue);
     }
@@ -420,33 +420,33 @@ function RegExpProto_replace([string = Value.undefined, replaceValue = Value.und
 }
 
 // 21.2.5.10 #sec-get-regexp.prototype-@@search
-function RegExpProto_search([string = Value.undefined], { thisValue }) {
+function* RegExpProto_search([string = Value.undefined], { thisValue }) {
   const rx = thisValue;
   if (Type(rx) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'RegExp', rx));
   }
-  const S = Q(ToString(string));
+  const S = Q(yield* ToString(string));
 
-  const previousLastIndex = Q(Get(rx, new Value('lastIndex')));
+  const previousLastIndex = Q(yield* Get(rx, new Value('lastIndex')));
   if (SameValue(previousLastIndex, new Value(0)) === Value.false) {
-    Q(Set(rx, new Value('lastIndex'), new Value(0), Value.true));
+    Q(yield* Set(rx, new Value('lastIndex'), new Value(0), Value.true));
   }
 
   const result = Q(RegExpExec(rx, S));
-  const currentLastIndex = Q(Get(rx, new Value('lastIndex')));
+  const currentLastIndex = Q(yield* Get(rx, new Value('lastIndex')));
   if (SameValue(currentLastIndex, previousLastIndex) === Value.false) {
-    Q(Set(rx, new Value('lastIndex'), previousLastIndex, Value.true));
+    Q(yield* Set(rx, new Value('lastIndex'), previousLastIndex, Value.true));
   }
 
   if (result === Value.null) {
     return new Value(-1);
   }
 
-  return Q(Get(result, new Value('index')));
+  return Q(yield* Get(result, new Value('index')));
 }
 
 // 21.2.5.11 #sec-get-regexp.prototype.source
-function RegExpProto_sourceGetter(args, { thisValue }) {
+function* RegExpProto_sourceGetter(args, { thisValue }) {
   const R = thisValue;
   if (Type(R) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'RegExp', R));
@@ -464,28 +464,28 @@ function RegExpProto_sourceGetter(args, { thisValue }) {
 }
 
 // 21.2.5.12 #sec-get-regexp.prototype-@@split
-function RegExpProto_split([string = Value.undefined, limit = Value.undefined], { thisValue }) {
+function* RegExpProto_split([string = Value.undefined, limit = Value.undefined], { thisValue }) {
   const rx = thisValue;
   if (Type(rx) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'RegExp', rx));
   }
-  const S = Q(ToString(string));
+  const S = Q(yield* ToString(string));
 
-  const C = Q(SpeciesConstructor(rx, surroundingAgent.intrinsic('%RegExp%')));
-  const flagsValue = Q(Get(rx, new Value('flags')));
-  const flags = Q(ToString(flagsValue)).stringValue();
+  const C = Q(yield* SpeciesConstructor(rx, surroundingAgent.intrinsic('%RegExp%')));
+  const flagsValue = Q(yield* Get(rx, new Value('flags')));
+  const flags = Q(yield* ToString(flagsValue)).stringValue();
   const unicodeMatching = flags.includes('u') ? Value.true : Value.false;
   const newFlags = flags.includes('y') ? new Value(flags) : new Value(`${flags}y`);
-  const splitter = Q(Construct(C, [rx, newFlags]));
+  const splitter = Q(yield* Construct(C, [rx, newFlags]));
 
-  const A = X(ArrayCreate(new Value(0)));
+  const A = X(yield* ArrayCreate(new Value(0)));
   let lengthA = 0;
 
   let lim;
   if (limit === Value.undefined) {
     lim = (2 ** 32) - 1;
   } else {
-    lim = Q(ToUint32(limit)).numberValue();
+    lim = Q(yield* ToUint32(limit)).numberValue();
   }
 
   const size = S.stringValue().length;
@@ -500,37 +500,37 @@ function RegExpProto_split([string = Value.undefined, limit = Value.undefined], 
     if (z !== Value.null) {
       return A;
     }
-    X(CreateDataProperty(A, new Value('0'), S));
+    X(yield* CreateDataProperty(A, new Value('0'), S));
     return A;
   }
 
   let q = new Value(p);
   while (q.numberValue() < size) {
-    Q(Set(splitter, new Value('lastIndex'), q, Value.true));
+    Q(yield* Set(splitter, new Value('lastIndex'), q, Value.true));
     const z = Q(RegExpExec(splitter, S));
     if (z === Value.null) {
       q = AdvanceStringIndex(S, q, unicodeMatching);
     } else {
-      const lastIndex = Q(Get(splitter, new Value('lastIndex')));
-      let e = Q(ToLength(lastIndex));
+      const lastIndex = Q(yield* Get(splitter, new Value('lastIndex')));
+      let e = Q(yield* ToLength(lastIndex));
       e = new Value(Math.min(e.numberValue(), size));
       if (e.numberValue() === p) {
         q = AdvanceStringIndex(S, q, unicodeMatching);
       } else {
         const T = new Value(S.stringValue().substring(p, q.numberValue()));
-        X(CreateDataProperty(A, X(ToString(new Value(lengthA))), T));
+        X(yield* CreateDataProperty(A, X(yield* ToString(new Value(lengthA))), T));
         lengthA += 1;
         if (lengthA === lim) {
           return A;
         }
         p = e.numberValue();
-        const zLength = Q(Get(z, new Value('length')));
-        let numberOfCaptures = Q(ToLength(zLength)).numberValue();
+        const zLength = Q(yield* Get(z, new Value('length')));
+        let numberOfCaptures = Q(yield* ToLength(zLength)).numberValue();
         numberOfCaptures = Math.max(numberOfCaptures - 1, 0);
         let i = 1;
         while (i <= numberOfCaptures) {
-          const nextCapture = Q(Get(z, X(ToString(new Value(i)))));
-          X(CreateDataProperty(A, X(ToString(new Value(lengthA))), nextCapture));
+          const nextCapture = Q(yield* Get(z, X(yield* ToString(new Value(i)))));
+          X(yield* CreateDataProperty(A, X(yield* ToString(new Value(lengthA))), nextCapture));
           i += 1;
           lengthA += 1;
           if (lengthA === lim) {
@@ -543,12 +543,12 @@ function RegExpProto_split([string = Value.undefined, limit = Value.undefined], 
   }
 
   const T = new Value(S.stringValue().substring(p, size));
-  X(CreateDataProperty(A, X(ToString(new Value(lengthA))), T));
+  X(yield* CreateDataProperty(A, X(yield* ToString(new Value(lengthA))), T));
   return A;
 }
 
 // 21.2.5.13 #sec-get-regexp.prototype.sticky
-function RegExpProto_stickyGetter(args, { thisValue }) {
+function* RegExpProto_stickyGetter(args, { thisValue }) {
   const R = thisValue;
   if (Type(R) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'RegExp', R));
@@ -567,12 +567,12 @@ function RegExpProto_stickyGetter(args, { thisValue }) {
 }
 
 // 21.2.5.14 #sec-get-regexp.prototype.test
-function RegExpProto_test([S = Value.undefined], { thisValue }) {
+function* RegExpProto_test([S = Value.undefined], { thisValue }) {
   const R = thisValue;
   if (Type(R) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'RegExp', R));
   }
-  const string = Q(ToString(S));
+  const string = Q(yield* ToString(S));
   const match = Q(RegExpExec(R, string));
   if (match !== Value.null) {
     return Value.true;
@@ -581,19 +581,19 @@ function RegExpProto_test([S = Value.undefined], { thisValue }) {
 }
 
 // 21.2.5.15 #sec-get-regexp.prototype.toString
-function RegExpProto_toString(args, { thisValue }) {
+function* RegExpProto_toString(args, { thisValue }) {
   const R = thisValue;
   if (Type(R) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'RegExp', R));
   }
-  const pattern = Q(ToString(Q(Get(R, new Value('source')))));
-  const flags = Q(ToString(Q(Get(R, new Value('flags')))));
+  const pattern = Q(yield* ToString(Q(yield* Get(R, new Value('source')))));
+  const flags = Q(yield* ToString(Q(yield* Get(R, new Value('flags')))));
   const result = `/${pattern.stringValue()}/${flags.stringValue()}`;
   return new Value(result);
 }
 
 // 21.2.5.16 #sec-get-regexp.prototype.unicode
-function RegExpProto_unicodeGetter(args, { thisValue }) {
+function* RegExpProto_unicodeGetter(args, { thisValue }) {
   const R = thisValue;
   if (Type(R) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'RegExp', R));

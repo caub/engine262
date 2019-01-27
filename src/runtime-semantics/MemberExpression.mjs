@@ -20,11 +20,11 @@ import { OutOfRange } from '../helpers.mjs';
 //   CallExpression : CallExpression `[` Expression `]`
 function* Evaluate_MemberExpression_Expression(MemberExpression, Expression) {
   const baseReference = yield* Evaluate(MemberExpression);
-  const baseValue = Q(GetValue(baseReference));
+  const baseValue = Q(yield* GetValue(baseReference));
   const propertyNameReference = yield* Evaluate(Expression);
-  const propertyNameValue = Q(GetValue(propertyNameReference));
+  const propertyNameValue = Q(yield* GetValue(propertyNameReference));
   const bv = Q(RequireObjectCoercible(baseValue));
-  const propertyKey = Q(ToPropertyKey(propertyNameValue));
+  const propertyKey = Q(yield* ToPropertyKey(propertyNameValue));
   const strict = MemberExpression.strict;
   return new Reference({
     BaseValue: bv,
@@ -38,7 +38,7 @@ function* Evaluate_MemberExpression_Expression(MemberExpression, Expression) {
 //   CallExpression : CallExpression `.` IdentifierName
 function* Evaluate_MemberExpression_IdentifierName(MemberExpression, IdentifierName) {
   const baseReference = yield* Evaluate(MemberExpression);
-  const baseValue = Q(GetValue(baseReference));
+  const baseValue = Q(yield* GetValue(baseReference));
   const bv = Q(RequireObjectCoercible(baseValue));
   const propertyNameString = new Value(IdentifierName.name);
   const strict = MemberExpression.strict;
@@ -52,7 +52,7 @@ function* Evaluate_MemberExpression_IdentifierName(MemberExpression, IdentifierN
 // 12.3.2.1 #sec-property-accessors-runtime-semantics-evaluation
 //   MemberExpression :
 //     MemberExpression `[` Expression `]`
-//     MemberEXpression `.` IdentifierName
+//     MemberExpression `.` IdentifierName
 //   CallExpression :
 //     CallExpression `[` Expression `]`
 //     CallExpression `.` IdentifierName

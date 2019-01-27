@@ -140,7 +140,7 @@ import {
   GetValue,
 } from './abstract-ops/all.mjs';
 import { surroundingAgent } from './engine.mjs';
-import { unwind, OutOfRange } from './helpers.mjs';
+import { OutOfRange } from './helpers.mjs';
 
 // 13.2.13 #sec-block-runtime-semantics-evaluation
 //   StatementList : StatementList StatementListItem
@@ -263,7 +263,7 @@ function* Evaluate_StatementListItem(StatementListItem) {
       return yield* Evaluate_TryStatement(StatementListItem);
 
     case isDebuggerStatement(StatementListItem):
-      return Evaluate_DebuggerStatement(StatementListItem);
+      return yield* Evaluate_DebuggerStatement(StatementListItem);
 
     case isHoistableDeclaration(StatementListItem):
       return Evaluate_HoistableDeclaration(StatementListItem);
@@ -285,7 +285,7 @@ export const Evaluate_Statement = Evaluate_StatementListItem;
 //   ExpressionStatement : Expression `;`
 function* Evaluate_ExpressionStatement(ExpressionStatement) {
   const exprRef = yield* Evaluate(ExpressionStatement.expression);
-  return GetValue(exprRef);
+  return yield* GetValue(exprRef);
 }
 
 export function EvaluateBinopValues(operator, lval, rval) {
@@ -332,7 +332,7 @@ function* Inner_Evaluate_Expression(Expression) {
       return Evaluate_ThisExpression(Expression);
 
     case isIdentifierReference(Expression):
-      return Evaluate_Identifier(Expression);
+      return yield* Evaluate_Identifier(Expression);
 
     case isLiteral(Expression):
       return Evaluate_Literal(Expression);
@@ -344,22 +344,22 @@ function* Inner_Evaluate_Expression(Expression) {
       return yield* Evaluate_ObjectLiteral(Expression);
 
     case isFunctionExpression(Expression):
-      return Evaluate_FunctionExpression(Expression);
+      return yield* Evaluate_FunctionExpression(Expression);
 
     case isClassExpression(Expression):
       return yield* Evaluate_ClassExpression(Expression);
 
     case isGeneratorExpression(Expression):
-      return Evaluate_GeneratorExpression(Expression);
+      return yield* Evaluate_GeneratorExpression(Expression);
 
     case isAsyncFunctionExpression(Expression):
-      return Evaluate_AsyncFunctionExpression(Expression);
+      return yield* Evaluate_AsyncFunctionExpression(Expression);
 
     case isAsyncGeneratorExpression(Expression):
-      return Evaluate_AsyncGeneratorExpression(Expression);
+      return yield* Evaluate_AsyncGeneratorExpression(Expression);
 
     case isRegularExpressionLiteral(Expression):
-      return Evaluate_RegularExpressionLiteral(Expression);
+      return yield* Evaluate_RegularExpressionLiteral(Expression);
 
     case isTemplateLiteral(Expression):
       return yield* Evaluate_TemplateLiteral(Expression);
@@ -430,10 +430,10 @@ function* Inner_Evaluate_Expression(Expression) {
       return yield* Evaluate_YieldExpression(Expression);
 
     case isArrowFunction(Expression):
-      return Evaluate_ArrowFunction(Expression);
+      return yield* Evaluate_ArrowFunction(Expression);
 
     case isAsyncArrowFunction(Expression):
-      return Evaluate_AsyncArrowFunction(Expression);
+      return yield* Evaluate_AsyncArrowFunction(Expression);
 
     case isActualAssignmentExpression(Expression):
       return yield* Evaluate_AssignmentExpression(Expression);
@@ -460,7 +460,7 @@ export function Evaluate_Script(Script) {
   if (Script.length === 0) {
     return new NormalCompletion(Value.undefined);
   }
-  return unwind(Evaluate_StatementList(Script));
+  return Evaluate_StatementList(Script);
 }
 
 // 15.2.1.20 #sec-module-semantics-runtime-semantics-evaluation
@@ -483,13 +483,15 @@ export function Evaluate_Module(Module) {
   if (Module.length === 0) {
     return new NormalCompletion(Value.undefined);
   }
-  return unwind(Evaluate_ModuleBody(Module));
+  return Evaluate_ModuleBody(Module);
 }
 
 export function* Evaluate(Production) {
   if (surroundingAgent.hostDefinedOptions.onNodeEvaluation) {
     surroundingAgent.hostDefinedOptions.onNodeEvaluation(Production, surroundingAgent.currentRealmRecord);
   }
+
+  yield Production;
 
   switch (true) {
     case isImportDeclaration(Production):

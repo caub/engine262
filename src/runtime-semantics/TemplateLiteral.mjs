@@ -23,8 +23,8 @@ export function* Evaluate_TemplateLiteral(TemplateLiteral) {
     const Expression = TemplateLiteral.expressions[i];
     const head = TemplateHead.value.cooked;
     const subRef = yield* Evaluate(Expression);
-    const sub = Q(GetValue(subRef));
-    const middle = Q(ToString(sub));
+    const sub = Q(yield* GetValue(subRef));
+    const middle = Q(yield* ToString(sub));
     str += head;
     str += middle.stringValue();
   }

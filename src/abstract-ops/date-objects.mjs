@@ -185,14 +185,14 @@ export const msPerMinute = msPerSecond * SecondsPerMinute;
 export const msPerHour = msPerMinute * MinutesPerHour;
 
 // 20.3.1.11 #sec-maketime
-export function MakeTime(hour, min, sec, ms) {
+export function* MakeTime(hour, min, sec, ms) {
   if (!Number.isFinite(hour.numberValue()) || !Number.isFinite(min.numberValue()) || !Number.isFinite(sec.numberValue()) || !Number.isFinite(ms.numberValue())) {
     return new Value(NaN);
   }
-  const h = X(ToInteger(hour)).numberValue();
-  const m = X(ToInteger(min)).numberValue();
-  const s = X(ToInteger(sec)).numberValue();
-  const milli = X(ToInteger(ms)).numberValue();
+  const h = X(yield* ToInteger(hour)).numberValue();
+  const m = X(yield* ToInteger(min)).numberValue();
+  const s = X(yield* ToInteger(sec)).numberValue();
+  const milli = X(yield* ToInteger(ms)).numberValue();
   const t = h * msPerHour + m * msPerMinute + s * msPerSecond + milli;
   return new Value(t);
 }
@@ -200,13 +200,13 @@ export function MakeTime(hour, min, sec, ms) {
 const daysWithinYearToEndOfMonth = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365];
 
 // 20.3.1.12 #sec-makeday
-export function MakeDay(year, month, date) {
+export function* MakeDay(year, month, date) {
   if (!Number.isFinite(year.numberValue()) || !Number.isFinite(month.numberValue()) || !Number.isFinite(date.numberValue())) {
     return new Value(NaN);
   }
-  const y = X(ToInteger(year)).numberValue();
-  const m = X(ToInteger(month)).numberValue();
-  const dt = X(ToInteger(date)).numberValue();
+  const y = X(yield* ToInteger(year)).numberValue();
+  const m = X(yield* ToInteger(month)).numberValue();
+  const dt = X(yield* ToInteger(date)).numberValue();
   const ym = y + Math.floor(m / 12);
   const mn = mod(m, 12);
   const ymday = DayFromYear(new Value(ym + (mn > 1 ? 1 : 0))).numberValue() - 365 * (mn > 1 ? 1 : 0) + daysWithinYearToEndOfMonth[mn];
@@ -223,14 +223,14 @@ export function MakeDate(day, time) {
 }
 
 // 20.3.1.14 #sec-timeclip
-export function TimeClip(time) {
+export function* TimeClip(time) {
   if (!Number.isFinite(time.numberValue())) {
     return new Value(NaN);
   }
   if (Math.abs(time.numberValue()) > 8.64e15) {
     return new Value(NaN);
   }
-  let clippedTime = X(ToInteger(time)).numberValue();
+  let clippedTime = X(yield* ToInteger(time)).numberValue();
   if (Object.is(clippedTime, -0)) {
     clippedTime = 0;
   }

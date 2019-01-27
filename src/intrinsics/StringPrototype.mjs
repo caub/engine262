@@ -40,10 +40,10 @@ function thisStringValue(value) {
 }
 
 // 21.1.3.1 #sec-string.prototype.charat
-function StringProto_charAt([pos = Value.undefined], { thisValue }) {
+function* StringProto_charAt([pos = Value.undefined], { thisValue }) {
   const O = Q(RequireObjectCoercible(thisValue));
-  const S = Q(ToString(O));
-  const position = Q(ToInteger(pos)).numberValue();
+  const S = Q(yield* ToString(O));
+  const position = Q(yield* ToInteger(pos)).numberValue();
   const size = S.stringValue().length;
   if (position < 0 || position >= size) {
     return new Value('');
@@ -52,10 +52,10 @@ function StringProto_charAt([pos = Value.undefined], { thisValue }) {
 }
 
 // 21.1.3.2 #sec-string.prototype.charcodeat
-function StringProto_charCodeAt([pos = Value.undefined], { thisValue }) {
+function* StringProto_charCodeAt([pos = Value.undefined], { thisValue }) {
   const O = Q(RequireObjectCoercible(thisValue));
-  const S = Q(ToString(O));
-  const position = Q(ToInteger(pos)).numberValue();
+  const S = Q(yield* ToString(O));
+  const position = Q(yield* ToInteger(pos)).numberValue();
   const size = S.stringValue().length;
   if (position < 0 || position >= size) {
     return new Value(NaN);
@@ -64,10 +64,10 @@ function StringProto_charCodeAt([pos = Value.undefined], { thisValue }) {
 }
 
 // 21.1.3.3 #sec-string.prototype.codepointat
-function StringProto_codePointAt([pos = Value.undefined], { thisValue }) {
+function* StringProto_codePointAt([pos = Value.undefined], { thisValue }) {
   const O = Q(RequireObjectCoercible(thisValue));
-  const S = Q(ToString(O));
-  const position = Q(ToInteger(pos)).numberValue();
+  const S = Q(yield* ToString(O));
+  const position = Q(yield* ToInteger(pos)).numberValue();
   const size = S.stringValue().length;
   if (position < 0 || position >= size) {
     return Value.undefined;
@@ -84,29 +84,32 @@ function StringProto_codePointAt([pos = Value.undefined], { thisValue }) {
 }
 
 // 21.1.3.4 #sec-string.prototype.concat
-function StringProto_concat(args, { thisValue }) {
+function* StringProto_concat(args, { thisValue }) {
   const O = Q(RequireObjectCoercible(thisValue));
-  const S = Q(ToString(O));
+  const S = Q(yield* ToString(O));
   let R = S.stringValue();
   while (args.length > 0) {
     const next = args.shift();
-    const nextString = Q(ToString(next));
+    const nextString = Q(yield* ToString(next));
     R = `${R}${nextString.stringValue()}`;
   }
   return new Value(R);
 }
 
 // 21.1.3.6 #sec-string.prototype.endswith
-function StringProto_endsWith([searchString = Value.undefined, endPosition = Value.undefined], { thisValue }) {
+function* StringProto_endsWith(
+  [searchString = Value.undefined, endPosition = Value.undefined],
+  { thisValue },
+) {
   const O = Q(RequireObjectCoercible(thisValue));
-  const S = Q(ToString(O)).stringValue();
-  const isRegExp = Q(IsRegExp(searchString));
+  const S = Q(yield* ToString(O)).stringValue();
+  const isRegExp = Q(yield* IsRegExp(searchString));
   if (isRegExp === Value.true) {
     return surroundingAgent.Throw('TypeError', msg('RegExpArgumentNotAllowed', 'String.prototype.endsWith'));
   }
-  const searchStr = Q(ToString(searchString)).stringValue();
+  const searchStr = Q(yield* ToString(searchString)).stringValue();
   const len = S.length;
-  const pos = endPosition === Value.undefined ? len : Q(ToInteger(endPosition)).numberValue();
+  const pos = endPosition === Value.undefined ? len : Q(yield* ToInteger(endPosition)).numberValue();
   const end = Math.min(Math.max(pos, 0), len);
   const searchLength = searchStr.length;
   const start = end - searchLength;
@@ -122,15 +125,18 @@ function StringProto_endsWith([searchString = Value.undefined, endPosition = Val
 }
 
 // 21.1.3.7 #sec-string.prototype.includes
-function StringProto_includes([searchString = Value.undefined, position = Value.undefined], { thisValue }) {
+function* StringProto_includes(
+  [searchString = Value.undefined, position = Value.undefined],
+  { thisValue },
+) {
   const O = Q(RequireObjectCoercible(thisValue));
-  const S = Q(ToString(O)).stringValue();
-  const isRegExp = Q(IsRegExp(searchString));
+  const S = Q(yield* ToString(O)).stringValue();
+  const isRegExp = Q(yield* IsRegExp(searchString));
   if (isRegExp === Value.true) {
     return surroundingAgent.Throw('TypeError', msg('RegExpArgumentNotAllowed', 'String.prototype.includes'));
   }
-  const searchStr = Q(ToString(searchString)).stringValue();
-  const pos = Q(ToInteger(position));
+  const searchStr = Q(yield* ToString(searchString)).stringValue();
+  const pos = Q(yield* ToInteger(position));
   Assert(!(position === Value.undefined) || pos.numberValue() === 0);
   const len = S.length;
   const start = Math.min(Math.max(pos.numberValue(), 0), len);
@@ -153,11 +159,14 @@ function StringProto_includes([searchString = Value.undefined, position = Value.
 }
 
 // 21.1.3.8 #sec-string.prototype.indexof
-function StringProto_indexOf([searchString = Value.undefined, position = Value.undefined], { thisValue }) {
+function* StringProto_indexOf(
+  [searchString = Value.undefined, position = Value.undefined],
+  { thisValue },
+) {
   const O = Q(RequireObjectCoercible(thisValue));
-  const S = Q(ToString(O)).stringValue();
-  const searchStr = Q(ToString(searchString)).stringValue();
-  const pos = Q(ToInteger(position));
+  const S = Q(yield* ToString(O)).stringValue();
+  const searchStr = Q(yield* ToString(searchString)).stringValue();
+  const pos = Q(yield* ToInteger(position));
   Assert(!(position === Value.undefined) || pos.numberValue() === 0);
   const len = S.length;
   const start = Math.min(Math.max(pos.numberValue(), 0), len);
@@ -180,17 +189,20 @@ function StringProto_indexOf([searchString = Value.undefined, position = Value.u
 }
 
 // 21.1.3.9 #sec-string.prototype.lastindexof
-function StringProto_lastIndexOf([searchString = Value.undefined, position = Value.undefined], { thisValue }) {
+function* StringProto_lastIndexOf(
+  [searchString = Value.undefined, position = Value.undefined],
+  { thisValue },
+) {
   const O = Q(RequireObjectCoercible(thisValue));
-  const S = Q(ToString(O)).stringValue();
-  const searchStr = Q(ToString(searchString)).stringValue();
-  const numPos = Q(ToNumber(position));
+  const S = Q(yield* ToString(O)).stringValue();
+  const searchStr = Q(yield* ToString(searchString)).stringValue();
+  const numPos = Q(yield* ToNumber(position));
   Assert(!(position === Value.undefined) || numPos.isNaN());
   let pos;
   if (numPos.isNaN()) {
     pos = new Value(Infinity);
   } else {
-    pos = X(ToInteger(numPos));
+    pos = X(yield* ToInteger(numPos));
   }
   const len = S.length;
   const start = Math.min(Math.max(pos.numberValue(), 0), len);
@@ -215,10 +227,10 @@ function StringProto_lastIndexOf([searchString = Value.undefined, position = Val
 }
 
 // 21.1.3.10 #sec-string.prototype.localecompare
-function StringProto_localeCompare([that = Value.undefined], { thisValue }) {
+function* StringProto_localeCompare([that = Value.undefined], { thisValue }) {
   const O = Q(RequireObjectCoercible(thisValue));
-  const S = Q(ToString(O)).stringValue();
-  const That = Q(ToString(that)).stringValue();
+  const S = Q(yield* ToString(O)).stringValue();
+  const That = Q(yield* ToString(that)).stringValue();
   if (S === That) {
     return new Value(0);
   } else if (S < That) {
@@ -229,13 +241,13 @@ function StringProto_localeCompare([that = Value.undefined], { thisValue }) {
 }
 
 // 21.1.3.12 #sec-string.prototype.normalize
-function StringProto_normalize([form], { thisValue }) {
+function* StringProto_normalize([form], { thisValue }) {
   const O = Q(RequireObjectCoercible(thisValue));
-  const S = Q(ToString(O));
+  const S = Q(yield* ToString(O));
   if (form === undefined || form === Value.undefined) {
     form = new Value('NFC');
   }
-  const f = Q(ToString(form)).stringValue();
+  const f = Q(yield* ToString(form)).stringValue();
   if (!['NFC', 'NFD', 'NFKC', 'NFKD'].includes(f)) {
     return surroundingAgent.Throw('RangeError');
   }
@@ -244,10 +256,10 @@ function StringProto_normalize([form], { thisValue }) {
 }
 
 // 21.1.3.13 #sec-string.prototype.padend
-function StringProto_padEnd([maxLength = Value.undefined, fillString = Value.undefined], { thisValue }) {
+function* StringProto_padEnd([maxLength = Value.undefined, fillString = Value.undefined], { thisValue }) {
   const O = Q(RequireObjectCoercible(thisValue));
-  const S = Q(ToString(O));
-  const intMaxLength = Q(ToLength(maxLength)).numberValue();
+  const S = Q(yield* ToString(O));
+  const intMaxLength = Q(yield* ToLength(maxLength)).numberValue();
   const stringLength = S.stringValue().length;
   if (intMaxLength <= stringLength) {
     return S;
@@ -256,7 +268,7 @@ function StringProto_padEnd([maxLength = Value.undefined, fillString = Value.und
   if (fillString === Value.undefined) {
     filler = ' ';
   } else {
-    filler = Q(ToString(fillString)).stringValue();
+    filler = Q(yield* ToString(fillString)).stringValue();
   }
   if (filler === '') {
     return S;
@@ -268,10 +280,10 @@ function StringProto_padEnd([maxLength = Value.undefined, fillString = Value.und
 }
 
 // 21.1.3.14 #sec-string.prototype.padstart
-function StringProto_padStart([maxLength = Value.undefined, fillString = Value.undefined], { thisValue }) {
+function* StringProto_padStart([maxLength = Value.undefined, fillString = Value.undefined], { thisValue }) {
   const O = Q(RequireObjectCoercible(thisValue));
-  const S = Q(ToString(O));
-  const intMaxLength = Q(ToLength(maxLength)).numberValue();
+  const S = Q(yield* ToString(O));
+  const intMaxLength = Q(yield* ToLength(maxLength)).numberValue();
   const stringLength = S.stringValue().length;
   if (intMaxLength <= stringLength) {
     return S;
@@ -280,7 +292,7 @@ function StringProto_padStart([maxLength = Value.undefined, fillString = Value.u
   if (fillString === Value.undefined) {
     filler = ' ';
   } else {
-    filler = Q(ToString(fillString)).stringValue();
+    filler = Q(yield* ToString(fillString)).stringValue();
   }
   if (filler === '') {
     return S;
@@ -292,10 +304,10 @@ function StringProto_padStart([maxLength = Value.undefined, fillString = Value.u
 }
 
 // 21.1.3.15 #sec-string.prototype.repeat
-function StringProto_repeat([count = Value.undefined], { thisValue }) {
+function* StringProto_repeat([count = Value.undefined], { thisValue }) {
   const O = Q(RequireObjectCoercible(thisValue));
-  const S = Q(ToString(O));
-  const n = Q(ToInteger(count));
+  const S = Q(yield* ToString(O));
+  const n = Q(yield* ToInteger(count));
   if (n.numberValue() < 0) {
     return surroundingAgent.Throw('RangeError', msg('StringRepeatCount', n));
   }
@@ -310,19 +322,22 @@ function StringProto_repeat([count = Value.undefined], { thisValue }) {
 }
 
 // 21.1.3.16 #sec-string.prototype.replace
-function StringProto_replace([searchValue = Value.undefined, replaceValue = Value.undefined], { thisValue }) {
+function* StringProto_replace(
+  [searchValue = Value.undefined, replaceValue = Value.undefined],
+  { thisValue },
+) {
   const O = Q(RequireObjectCoercible(thisValue));
   if (searchValue !== Value.undefined && searchValue !== Value.null) {
-    const replacer = Q(GetMethod(searchValue, wellKnownSymbols.replace));
+    const replacer = Q(yield* GetMethod(searchValue, wellKnownSymbols.replace));
     if (replacer !== Value.undefined) {
-      return Q(Call(replacer, searchValue, [O, replaceValue]));
+      return Q(yield* Call(replacer, searchValue, [O, replaceValue]));
     }
   }
-  const string = Q(ToString(O));
-  const searchString = Q(ToString(searchValue));
+  const string = Q(yield* ToString(O));
+  const searchString = Q(yield* ToString(searchValue));
   const functionalReplace = IsCallable(replaceValue);
   if (functionalReplace === Value.false) {
-    replaceValue = Q(ToString(replaceValue));
+    replaceValue = Q(yield* ToString(replaceValue));
   }
   const pos = new Value(string.stringValue().indexOf(searchString.stringValue()));
   const matched = searchString;
@@ -331,8 +346,8 @@ function StringProto_replace([searchValue = Value.undefined, replaceValue = Valu
   }
   let replStr;
   if (functionalReplace === Value.true) {
-    const replValue = Q(Call(replaceValue, Value.undefined, [matched, pos, string]));
-    replStr = Q(ToString(replValue));
+    const replValue = Q(yield* Call(replaceValue, Value.undefined, [matched, pos, string]));
+    replStr = Q(yield* ToString(replValue));
   } else {
     const captures = [];
     replStr = GetSubstitution(matched, string, pos, captures, Value.undefined, replaceValue);
@@ -343,16 +358,16 @@ function StringProto_replace([searchValue = Value.undefined, replaceValue = Valu
 }
 
 // 21.1.3.18 #sec-string.prototype.slice
-function StringProto_slice([start = Value.undefined, end = Value.undefined], { thisValue }) {
+function* StringProto_slice([start = Value.undefined, end = Value.undefined], { thisValue }) {
   const O = Q(RequireObjectCoercible(thisValue));
-  const S = Q(ToString(O)).stringValue();
+  const S = Q(yield* ToString(O)).stringValue();
   const len = S.length;
-  const intStart = Q(ToInteger(start)).numberValue();
+  const intStart = Q(yield* ToInteger(start)).numberValue();
   let intEnd;
   if (end === Value.undefined) {
     intEnd = len;
   } else {
-    intEnd = Q(ToInteger(end)).numberValue();
+    intEnd = Q(yield* ToInteger(end)).numberValue();
   }
   let from;
   if (intStart < 0) {
@@ -371,26 +386,26 @@ function StringProto_slice([start = Value.undefined, end = Value.undefined], { t
 }
 
 // 21.1.3.19 #sec-string.prototype.split
-function StringProto_split([separator = Value.undefined, limit = Value.undefined], { thisValue }) {
+function* StringProto_split([separator = Value.undefined, limit = Value.undefined], { thisValue }) {
   const O = Q(RequireObjectCoercible(thisValue));
   if (separator !== Value.undefined && separator !== Value.null) {
-    const splitter = Q(GetMethod(separator, wellKnownSymbols.split));
+    const splitter = Q(yield* GetMethod(separator, wellKnownSymbols.split));
     if (splitter !== Value.undefined) {
-      return Q(Call(splitter, separator, [O, limit]));
+      return Q(yield* Call(splitter, separator, [O, limit]));
     }
   }
-  const S = Q(ToString(O));
-  const A = X(ArrayCreate(new Value(0)));
+  const S = Q(yield* ToString(O));
+  const A = X(yield* ArrayCreate(new Value(0)));
   let lengthA = 0;
-  const lim = limit === Value.undefined ? new Value((2 ** 32) - 1) : Q(ToUint32(limit));
+  const lim = limit === Value.undefined ? new Value((2 ** 32) - 1) : Q(yield* ToUint32(limit));
   const s = S.stringValue().length;
   let p = 0;
-  const R = Q(ToString(separator));
+  const R = Q(yield* ToString(separator));
   if (lim.numberValue() === 0) {
     return A;
   }
   if (separator === Value.undefined) {
-    X(CreateDataProperty(A, new Value('0'), S));
+    X(yield* CreateDataProperty(A, new Value('0'), S));
     return A;
   }
   if (s === 0) {
@@ -398,7 +413,7 @@ function StringProto_split([separator = Value.undefined, limit = Value.undefined
     if (z !== false) {
       return A;
     }
-    X(CreateDataProperty(A, new Value('0'), S));
+    X(yield* CreateDataProperty(A, new Value('0'), S));
     return A;
   }
   let q = p;
@@ -411,7 +426,7 @@ function StringProto_split([separator = Value.undefined, limit = Value.undefined
         q += 1;
       } else {
         const T = new Value(S.stringValue().substring(p, q));
-        X(CreateDataProperty(A, X(ToString(new Value(lengthA))), T));
+        X(yield* CreateDataProperty(A, X(yield* ToString(new Value(lengthA))), T));
         lengthA += 1;
         if (lengthA === lim.numberValue()) {
           return A;
@@ -422,7 +437,7 @@ function StringProto_split([separator = Value.undefined, limit = Value.undefined
     }
   }
   const T = new Value(S.stringValue().substring(p, s));
-  X(CreateDataProperty(A, X(ToString(new Value(lengthA))), T));
+  X(yield* CreateDataProperty(A, X(yield* ToString(new Value(lengthA))), T));
   return A;
 }
 
@@ -443,15 +458,18 @@ function SplitMatch(S, q, R) {
 }
 
 // 21.1.3.20 #sec-string.prototype.startswith
-function StringProto_startsWith([searchString = Value.undefined, position = Value.undefined], { thisValue }) {
+function* StringProto_startsWith(
+  [searchString = Value.undefined, position = Value.undefined],
+  { thisValue },
+) {
   const O = Q(RequireObjectCoercible(thisValue));
-  const S = Q(ToString(O)).stringValue();
-  const isRegExp = Q(IsRegExp(searchString));
+  const S = Q(yield* ToString(O)).stringValue();
+  const isRegExp = Q(yield* IsRegExp(searchString));
   if (isRegExp === Value.true) {
     return surroundingAgent.Throw('TypeError', msg('RegExpArgumentNotAllowed', 'String.prototype.startsWith'));
   }
-  const searchStr = Q(ToString(searchString)).stringValue();
-  const pos = Q(ToInteger(position)).numberValue();
+  const searchStr = Q(yield* ToString(searchString)).stringValue();
+  const pos = Q(yield* ToInteger(position)).numberValue();
   Assert(!(position === Value.undefined) || pos === 0);
   const len = S.length;
   const start = Math.min(Math.max(pos, 0), len);
@@ -468,16 +486,16 @@ function StringProto_startsWith([searchString = Value.undefined, position = Valu
 }
 
 // 21.1.3.21 #sec-string.prototype.substring
-function StringProto_substring([start = Value.undefined, end = Value.undefined], { thisValue }) {
+function* StringProto_substring([start = Value.undefined, end = Value.undefined], { thisValue }) {
   const O = Q(RequireObjectCoercible(thisValue));
-  const S = Q(ToString(O)).stringValue();
+  const S = Q(yield* ToString(O)).stringValue();
   const len = S.length;
-  const intStart = Q(ToInteger(start)).numberValue();
+  const intStart = Q(yield* ToInteger(start)).numberValue();
   let intEnd;
   if (end === Value.undefined) {
     intEnd = len;
   } else {
-    intEnd = Q(ToInteger(end)).numberValue();
+    intEnd = Q(yield* ToInteger(end)).numberValue();
   }
   const finalStart = Math.min(Math.max(intStart, 0), len);
   const finalEnd = Math.min(Math.max(intEnd, 0), len);
@@ -487,43 +505,43 @@ function StringProto_substring([start = Value.undefined, end = Value.undefined],
 }
 
 // 21.1.3.24 #sec-string.prototype.tolowercase
-function StringProto_toLowerCase(args, { thisValue }) {
+function* StringProto_toLowerCase(args, { thisValue }) {
   const O = Q(RequireObjectCoercible(thisValue));
-  const S = Q(ToString(O));
+  const S = Q(yield* ToString(O));
   const L = S.stringValue().toLowerCase();
   return new Value(L);
 }
 
 // 21.1.3.25 #sec-string.prototype.tostring
-function StringProto_toString(args, { thisValue }) {
+function* StringProto_toString(args, { thisValue }) {
   return Q(thisStringValue(thisValue));
 }
 
 // 21.1.3.26 #sec-string.prototype.touppercase
-function StringProto_toUpperCase(args, { thisValue }) {
+function* StringProto_toUpperCase(args, { thisValue }) {
   const O = Q(RequireObjectCoercible(thisValue));
-  const S = Q(ToString(O));
+  const S = Q(yield* ToString(O));
   const L = S.stringValue().toUpperCase();
   return new Value(L);
 }
 
 // 21.1.3.27 #sec-string.prototype.trim
-function StringProto_trim(args, { thisValue }) {
+function* StringProto_trim(args, { thisValue }) {
   const O = Q(RequireObjectCoercible(thisValue));
-  const S = Q(ToString(O));
+  const S = Q(yield* ToString(O));
   const T = S.stringValue().trim();
   return new Value(T);
 }
 
 // 21.1.3.28 #sec-string.prototype.valueof
-function StringProto_valueOf(args, { thisValue }) {
+function* StringProto_valueOf(args, { thisValue }) {
   return Q(thisStringValue(thisValue));
 }
 
 // 21.1.3.29 #sec-string.prototype-@@iterator
-function StringProto_iterator(args, { thisValue }) {
+function* StringProto_iterator(args, { thisValue }) {
   const O = Q(RequireObjectCoercible(thisValue));
-  const S = Q(ToString(O));
+  const S = Q(yield* ToString(O));
   return Q(CreateStringIterator(S));
 }
 

@@ -48,10 +48,10 @@ export function AsyncGeneratorStart(generator, generatorBody) {
     } else {
       resultValue = result.Value;
       if (result.Type !== 'return') {
-        return X(AsyncGeneratorReject(generator, resultValue));
+        return X(yield* AsyncGeneratorReject(generator, resultValue));
       }
     }
-    return X(AsyncGeneratorResolve(generator, resultValue, Value.true));
+    return X(yield* AsyncGeneratorResolve(generator, resultValue, Value.true));
   }());
   generator.AsyncGeneratorContext = genContext;
   generator.AsyncGeneratorState = 'suspendedStart';
@@ -60,46 +60,46 @@ export function AsyncGeneratorStart(generator, generatorBody) {
 }
 
 // 25.5.3.3 #sec-asyncgeneratorresolve
-function AsyncGeneratorResolve(generator, value, done) {
+function* AsyncGeneratorResolve(generator, value, done) {
   // Assert: generator is an AsyncGenerator instance.
   const queue = generator.AsyncGeneratorQueue;
   Assert(queue.length > 0);
   const next = queue.shift();
   const promiseCapability = next.Capability;
-  const iteratorResult = X(CreateIterResultObject(value, done));
-  X(Call(promiseCapability.Resolve, Value.undefined, [iteratorResult]));
-  X(AsyncGeneratorResumeNext(generator));
+  const iteratorResult = X(yield* CreateIterResultObject(value, done));
+  X(yield* Call(promiseCapability.Resolve, Value.undefined, [iteratorResult]));
+  X(yield* AsyncGeneratorResumeNext(generator));
   return Value.undefined;
 }
 
 // 25.5.3.4 #sec-asyncgeneratorreject
-function AsyncGeneratorReject(generator, exception) {
+function* AsyncGeneratorReject(generator, exception) {
   // Assert: generator is an AsyncGenerator instance.
   const queue = generator.AsyncGeneratorQueue;
   Assert(queue.length > 0);
   const next = queue.shift();
   const promiseCapability = next.Capability;
-  X(Call(promiseCapability.Reject, Value.undefined, [exception]));
-  X(AsyncGeneratorResumeNext(generator));
+  X(yield* Call(promiseCapability.Reject, Value.undefined, [exception]));
+  X(yield* AsyncGeneratorResumeNext(generator));
   return Value.undefined;
 }
 
 // 25.5.3.5.1 #async-generator-resume-next-return-processor-fulfilled
-function AsyncGeneratorResumeNextReturnProcessorFulfilledFunctions([value = Value.undefined]) {
+function* AsyncGeneratorResumeNextReturnProcessorFulfilledFunctions([value = Value.undefined]) {
   const F = surroundingAgent.activeFunctionObject;
   F.Generator.AsyncGeneratorState = 'completed';
-  return X(AsyncGeneratorResolve(F.Generator, value, Value.true));
+  return X(yield* AsyncGeneratorResolve(F.Generator, value, Value.true));
 }
 
 // 25.5.3.5.2 #async-generator-resume-next-return-processor-rejected
-function AsyncGeneratorResumeNextReturnProcessorRejectedFunctions([reason = Value.undefined]) {
+function* AsyncGeneratorResumeNextReturnProcessorRejectedFunctions([reason = Value.undefined]) {
   const F = surroundingAgent.activeFunctionObject;
   F.Generator.AsyncGeneratorState = 'completed';
-  return X(AsyncGeneratorReject(F.Generator, reason));
+  return X(yield* AsyncGeneratorReject(F.Generator, reason));
 }
 
 // 25.5.3.5 #sec-asyncgeneratorresumenext
-function AsyncGeneratorResumeNext(generator) {
+function* AsyncGeneratorResumeNext(generator) {
   // Assert: generator is an AsyncGenerator instance.
   let state = generator.AsyncGeneratorState;
   Assert(state !== 'executing');
@@ -121,19 +121,19 @@ function AsyncGeneratorResumeNext(generator) {
     if (state === 'completed') {
       if (completion.Type === 'return') {
         generator.AsyncGeneratorState = 'awaiting-return';
-        const promiseCapability = X(NewPromiseCapability(surroundingAgent.intrinsic('%Promise%')));
-        X(Call(promiseCapability.Resolve, Value.undefined, [completion.Value]));
+        const promiseCapability = X(yield* NewPromiseCapability(surroundingAgent.intrinsic('%Promise%')));
+        X(yield* Call(promiseCapability.Resolve, Value.undefined, [completion.Value]));
         const stepsFulfilled = AsyncGeneratorResumeNextReturnProcessorFulfilledFunctions;
         const onFulfilled = CreateBuiltinFunction(stepsFulfilled, ['Generator']);
         onFulfilled.Generator = generator;
         const stepsRejected = AsyncGeneratorResumeNextReturnProcessorRejectedFunctions;
         const onRejected = CreateBuiltinFunction(stepsRejected, ['Generator']);
         onRejected.Generator = generator;
-        X(PerformPromiseThen(promiseCapability.Promise, onFulfilled, onRejected));
+        X(yield* PerformPromiseThen(promiseCapability.Promise, onFulfilled, onRejected));
         return Value.undefined;
       } else {
         Assert(completion.Type === 'throw');
-        X(AsyncGeneratorReject(generator, completion.Value));
+        X(yield* AsyncGeneratorReject(generator, completion.Value));
         return Value.undefined;
       }
     }
@@ -153,12 +153,12 @@ function AsyncGeneratorResumeNext(generator) {
 }
 
 // 25.5.3.6 #sec-asyncgeneratorenqueue
-export function AsyncGeneratorEnqueue(generator, completion) {
+export function* AsyncGeneratorEnqueue(generator, completion) {
   Assert(completion instanceof Completion);
-  const promiseCapability = X(NewPromiseCapability(surroundingAgent.intrinsic('%Promise%')));
+  const promiseCapability = X(yield* NewPromiseCapability(surroundingAgent.intrinsic('%Promise%')));
   if (Type(generator) !== 'Object' || !('AsyncGeneratorState' in generator)) {
     const badGeneratorError = surroundingAgent.Throw('TypeError', msg('NotAnTypeObject', 'AsyncGenerator', generator)).Value;
-    X(Call(promiseCapability.Reject, Value.undefined, [badGeneratorError]));
+    X(yield* Call(promiseCapability.Reject, Value.undefined, [badGeneratorError]));
     return promiseCapability.Promise;
   }
   const queue = generator.AsyncGeneratorQueue;
@@ -166,7 +166,7 @@ export function AsyncGeneratorEnqueue(generator, completion) {
   queue.push(request);
   const state = generator.AsyncGeneratorState;
   if (state !== 'executing') {
-    X(AsyncGeneratorResumeNext(generator));
+    X(yield* AsyncGeneratorResumeNext(generator));
   }
   return promiseCapability.Promise;
 }

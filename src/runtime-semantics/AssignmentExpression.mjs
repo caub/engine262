@@ -27,35 +27,35 @@ export function* Evaluate_AssignmentExpression(node) {
       const lref = yield* Evaluate(LeftHandSideExpression);
       ReturnIfAbrupt(lref);
       const rref = yield* Evaluate(AssignmentExpression);
-      const rval = Q(GetValue(rref));
+      const rval = Q(yield* GetValue(rref));
       if (IsAnonymousFunctionDefinition(AssignmentExpression)
           && IsIdentifierRef(LeftHandSideExpression)) {
-        const hasNameProperty = Q(HasOwnProperty(rval, new Value('name')));
+        const hasNameProperty = Q(yield* HasOwnProperty(rval, new Value('name')));
         if (hasNameProperty === Value.false) {
-          SetFunctionName(rval, GetReferencedName(lref));
+          yield* SetFunctionName(rval, GetReferencedName(lref));
         }
       }
-      Q(PutValue(lref, rval));
+      Q(yield* PutValue(lref, rval));
       return rval;
     }
     const assignmentPattern = LeftHandSideExpression;
     const rref = yield* Evaluate(AssignmentExpression);
-    const rval = Q(GetValue(rref));
+    const rval = Q(yield* GetValue(rref));
     Q(yield* DestructuringAssignmentEvaluation_AssignmentPattern(assignmentPattern, rval));
     return rval;
   } else {
     const AssignmentOperator = node.operator;
 
     const lref = yield* Evaluate(LeftHandSideExpression);
-    const lval = Q(GetValue(lref));
+    const lval = Q(yield* GetValue(lref));
     const rref = yield* Evaluate(AssignmentExpression);
-    const rval = Q(GetValue(rref));
+    const rval = Q(yield* GetValue(rref));
     // Let op be the @ where AssignmentOperator is @=.
     const op = AssignmentOperator.slice(0, -1);
     // Let r be the result of applying op to lval and rval
     // as if evaluating the expression lval op rval.
-    const r = EvaluateBinopValues(op, lval, rval);
-    Q(PutValue(lref, r));
+    const r = yield* EvaluateBinopValues(op, lval, rval);
+    Q(yield* PutValue(lref, r));
     return r;
   }
 }

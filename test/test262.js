@@ -101,6 +101,22 @@ function printProgress(test, log) {
   }
 }
 
+function consume(it) {
+  while (true) {
+    const { value, done } = it.next();
+    if (done) {
+      return value;
+    } else {
+      /*
+      if (value && value.type !== 'ExpressionStatement') {
+        console.log('Evaluating', value.type);
+        console.log(codeFrame.codeFrameColumns(source, value.loc, { highlightCode: true }));
+      }
+      */
+    }
+  }
+}
+
 function createRealm() {
   const realm = new Realm({
     resolveImportedModule(referencingModule, specifier) {
@@ -117,23 +133,26 @@ function createRealm() {
   const $262 = new APIObject(realm);
   realm.global.$262 = $262;
 
-  Abstract.CreateDataProperty(realm.global, new Value(realm, 'print'), new Value(realm, (args) => {
-    if ($262.handlePrint) {
-      $262.handlePrint(...args);
-    }
-    return Value.undefined;
-  }));
+  consume(Abstract.CreateDataProperty(realm.global, new Value(realm, 'print'),
+    new Value(realm, function* print(args) {
+      if ($262.handlePrint) {
+        $262.handlePrint(...args);
+      }
+      return Value.undefined;
+    })));
 
-  Abstract.CreateDataProperty($262, new Value(realm, 'global'), realm.global);
-  Abstract.CreateDataProperty($262, new Value(realm, 'createRealm'), new Value(realm, () => createRealm()));
-  Abstract.CreateDataProperty($262, new Value(realm, 'evalScript'),
-    new Value(realm, ([sourceText]) => realm.evaluateScript(sourceText.stringValue())));
-  Abstract.CreateDataProperty($262, new Value(realm, 'detachArrayBuffer'), new Value(realm, ([arrayBuffer = Value.undefined]) => Abstract.DetachArrayBuffer(arrayBuffer)));
+  consume(Abstract.CreateDataProperty($262, new Value(realm, 'global'), realm.global));
+  consume(Abstract.CreateDataProperty($262, new Value(realm, 'createRealm'),
+    new Value(realm, function* () { return createRealm(); })));
+  consume(Abstract.CreateDataProperty($262, new Value(realm, 'evalScript'),
+    new Value(realm, ([sourceText]) => realm.evaluateScript(sourceText.stringValue()))));
+  consume(Abstract.CreateDataProperty($262, new Value(realm, 'detachArrayBuffer'),
+    new Value(realm, ([arrayBuffer = Value.undefined]) => Abstract.DetachArrayBuffer(arrayBuffer))));
 
-  Abstract.CreateDataProperty(realm.global, new Value(realm, '$262'), $262);
+  consume(Abstract.CreateDataProperty(realm.global, new Value(realm, '$262'), $262));
 
   $262.realm = realm;
-  $262.evalScript = (sourceText) => realm.evaluateScript(sourceText);
+  $262.evalScript = (sourceText) => consume(realm.evaluateScript(sourceText));
 
   return $262;
 }
@@ -219,7 +238,7 @@ async function run({ file, contents, attrs }) {
       $262.moduleEntry = module;
       completion = module.Instantiate();
       if (!(completion instanceof AbruptCompletion)) {
-        completion = module.Evaluate();
+        completion = consume(module.Evaluate());
       }
     }
   } else {

@@ -7,6 +7,6 @@ import { Q } from '../completion.mjs';
 //   Identifier
 //   yield
 //   await
-export function Evaluate_Identifier(Identifier) {
-  return Q(ResolveBinding(new Value(Identifier.name), undefined, Identifier.strict));
+export function* Evaluate_Identifier(Identifier) {
+  return Q(yield* ResolveBinding(new Value(Identifier.name), undefined, Identifier.strict));
 }

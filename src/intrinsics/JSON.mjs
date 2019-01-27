@@ -200,41 +200,41 @@ class JSONValidator {
   }
 }
 
-function JSON_parse([text = Value.undefined, reviver = Value.undefined]) {
-  function InternalizeJSONProperty(holder, name) {
-    const val = Q(Get(holder, name));
+function* JSON_parse([text = Value.undefined, reviver = Value.undefined]) {
+  function* InternalizeJSONProperty(holder, name) {
+    const val = Q(yield* Get(holder, name));
     if (Type(val) === 'Object') {
       const isArray = Q(IsArray(val));
       if (isArray === Value.true) {
         let I = 0;
-        const lenProp = Q(Get(val, new Value('length')));
-        const len = Q(ToLength(lenProp)).numberValue();
+        const lenProp = Q(yield* Get(val, new Value('length')));
+        const len = Q(yield* ToLength(lenProp)).numberValue();
         while (I < len) {
-          const Istr = X(ToString(new Value(I)));
+          const Istr = X(yield* ToString(new Value(I)));
           const newElement = Q(InternalizeJSONProperty(val, Istr));
           if (Type(newElement) === 'Undefined') {
             Q(val.Delete(Istr));
           } else {
-            Q(CreateDataProperty(val, Istr, newElement));
+            Q(yield* CreateDataProperty(val, Istr, newElement));
           }
           I += 1;
         }
       } else {
-        const keys = Q(EnumerableOwnPropertyNames(val, 'key'));
+        const keys = Q(yield* EnumerableOwnPropertyNames(val, 'key'));
         for (const P of keys) {
           const newElement = Q(InternalizeJSONProperty(val, P));
           if (Type(newElement) === 'Undefined') {
             Q(val.Delete(P));
           } else {
-            Q(CreateDataProperty(val, P, newElement));
+            Q(yield* CreateDataProperty(val, P, newElement));
           }
         }
       }
     }
-    return Q(Call(reviver, holder, [name, val]));
+    return Q(yield* Call(reviver, holder, [name, val]));
   }
 
-  const jText = Q(ToString(text));
+  const jText = Q(yield* ToString(text));
   // Parse JText interpreted as UTF-16 encoded Unicode points (6.1.4) as a JSON text as specified in ECMA-404.
   // Throw a SyntaxError exception if JText is not a valid JSON text as defined in that specification.
   Q(JSONValidator.validate(jText.stringValue()));
@@ -249,7 +249,7 @@ function JSON_parse([text = Value.undefined, reviver = Value.undefined]) {
   if (IsCallable(reviver) === Value.true) {
     const root = ObjectCreate(surroundingAgent.intrinsic('%ObjectPrototype%'));
     const rootName = new Value('');
-    const status = X(CreateDataProperty(root, rootName, unfiltered));
+    const status = X(yield* CreateDataProperty(root, rootName, unfiltered));
     Assert(status === Value.true);
     return Q(InternalizeJSONProperty(root, rootName));
   } else {
@@ -267,24 +267,26 @@ const codeUnitTable = new Map([
   ['\u005C', '\\\\'],
 ]);
 
-function JSON_stringify([value = Value.undefined, replacer = Value.undefined, space = Value.undefined]) {
+function* JSON_stringify(
+  [value = Value.undefined, replacer = Value.undefined, space = Value.undefined],
+) {
   // 24.5.2.1 #sec-serializejsonproperty
-  function SerializeJSONProperty(key, holder) {
-    let value = Q(Get(holder, key)); // eslint-disable-line no-shadow
+  function* SerializeJSONProperty(key, holder) {
+    let value = Q(yield* Get(holder, key)); // eslint-disable-line no-shadow
     if (Type(value) === 'Object') {
-      const toJSON = Q(Get(value, new Value('toJSON')));
+      const toJSON = Q(yield* Get(value, new Value('toJSON')));
       if (IsCallable(toJSON) === Value.true) {
-        value = Q(Call(toJSON, value, [key]));
+        value = Q(yield* Call(toJSON, value, [key]));
       }
     }
     if (ReplacerFunction !== Value.undefined) {
-      value = Q(Call(ReplacerFunction, holder, [key, value]));
+      value = Q(yield* Call(ReplacerFunction, holder, [key, value]));
     }
     if (Type(value) === 'Object') {
       if ('NumberData' in value) {
-        value = Q(ToNumber(value));
+        value = Q(yield* ToNumber(value));
       } else if ('StringData' in value) {
-        value = Q(ToString(value));
+        value = Q(yield* ToString(value));
       } else if ('BooleanData' in value) {
         value = value.BooleanData;
       }
@@ -303,7 +305,7 @@ function JSON_stringify([value = Value.undefined, replacer = Value.undefined, sp
     }
     if (Type(value) === 'Number') {
       if (!value.isInfinity()) {
-        return X(ToString(value));
+        return X(yield* ToString(value));
       }
       return new Value('null');
     }
@@ -339,7 +341,7 @@ function JSON_stringify([value = Value.undefined, replacer = Value.undefined, sp
   }
 
   // 24.5.2.4 #sec-serializejsonobject
-  function SerializeJSONObject(value) { // eslint-disable-line no-shadow
+  function* SerializeJSONObject(value) { // eslint-disable-line no-shadow
     if (stack.includes(value)) {
       return surroundingAgent.Throw('TypeError', 'Cannot stringify a circular structure');
     }
@@ -350,7 +352,7 @@ function JSON_stringify([value = Value.undefined, replacer = Value.undefined, sp
     if (PropertyList !== Value.undefined) {
       K = PropertyList;
     } else {
-      K = Q(EnumerableOwnPropertyNames(value, 'key'));
+      K = Q(yield* EnumerableOwnPropertyNames(value, 'key'));
     }
     const partial = [];
     for (const P of K) {
@@ -384,7 +386,7 @@ function JSON_stringify([value = Value.undefined, replacer = Value.undefined, sp
   }
 
   // 24.5.2.5 #sec-serializejsonarray
-  function SerializeJSONArray(value) { // eslint-disable-line no-shadow
+  function* SerializeJSONArray(value) { // eslint-disable-line no-shadow
     if (stack.includes(value)) {
       return surroundingAgent.Throw('TypeError', 'Cannot stringify a circular structure');
     }
@@ -392,10 +394,10 @@ function JSON_stringify([value = Value.undefined, replacer = Value.undefined, sp
     const stepback = indent;
     indent = `${indent}${gap}`;
     const partial = [];
-    const len = Q(Get(value, new Value('length'))).numberValue();
+    const len = Q(yield* Get(value, new Value('length'))).numberValue();
     let index = 0;
     while (index < len) {
-      const indexStr = X(ToString(new Value(index)));
+      const indexStr = X(yield* ToString(new Value(index)));
       const strP = Q(SerializeJSONProperty(indexStr, value));
       if (strP === Value.undefined) {
         partial.push('null');
@@ -433,18 +435,18 @@ function JSON_stringify([value = Value.undefined, replacer = Value.undefined, sp
       const isArray = Q(IsArray(replacer));
       if (isArray === Value.true) {
         PropertyList = [];
-        const len = Q(ToLength(Q(Get(replacer, new Value('length'))))).numberValue();
+        const len = Q(yield* ToLength(Q(yield* Get(replacer, new Value('length'))))).numberValue();
         let k = 0;
         while (k < len) {
-          const v = Q(Get(replacer, X(ToString(new Value(k)))));
+          const v = Q(yield* Get(replacer, X(yield* ToString(new Value(k)))));
           let item = Value.undefined;
           if (Type(v) === 'String') {
             item = v;
           } else if (Type(v) === 'Number') {
-            item = X(ToString(v));
+            item = X(yield* ToString(v));
           } else if (Type(v) === 'Object') {
             if ('StringData' in v || 'NumberData' in v) {
-              item = Q(ToString(v));
+              item = Q(yield* ToString(v));
             }
           }
           if (Type(item) !== 'undefined' && !PropertyList.includes(item)) {
@@ -457,14 +459,14 @@ function JSON_stringify([value = Value.undefined, replacer = Value.undefined, sp
   }
   if (Type(space) === 'Object') {
     if ('NumberData' in space) {
-      space = Q(ToNumber(space));
+      space = Q(yield* ToNumber(space));
     } else if ('StringData' in space) {
-      space = Q(ToString(space));
+      space = Q(yield* ToString(space));
     }
   }
   let gap;
   if (Type(space) === 'Number') {
-    space = Math.min(10, X(ToInteger(space)).numberValue());
+    space = Math.min(10, X(yield* ToInteger(space)).numberValue());
     gap = ' '.repeat(space >= 0 ? space : 0);
   } else if (Type(space) === 'String') {
     if (space.stringValue().length <= 10) {
@@ -476,7 +478,7 @@ function JSON_stringify([value = Value.undefined, replacer = Value.undefined, sp
     gap = '';
   }
   const wrapper = ObjectCreate(surroundingAgent.intrinsic('%ObjectPrototype%'));
-  const status = X(CreateDataProperty(wrapper, new Value(''), value));
+  const status = X(yield* CreateDataProperty(wrapper, new Value(''), value));
   Assert(status === Value.true);
   return Q(SerializeJSONProperty(new Value(''), wrapper));
 }
@@ -488,5 +490,5 @@ export function CreateJSON(realmRec) {
   ], realmRec.Intrinsics['%ObjectPrototype%'], 'JSON');
 
   realmRec.Intrinsics['%JSON%'] = json;
-  realmRec.Intrinsics['%JSONParse%'] = X(json.Get(new Value('parse')));
+  realmRec.Intrinsics['%JSONParse%'] = json.properties.get(new Value('parse')).Value;
 }

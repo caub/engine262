@@ -21,17 +21,17 @@ import { OutOfRange } from '../helpers.mjs';
 
 function* ArrayAccumulation_SpreadElement(SpreadElement, array, nextIndex) {
   const spreadRef = yield* Evaluate(SpreadElement.argument);
-  const spreadObj = Q(GetValue(spreadRef));
-  const iteratorRecord = Q(GetIterator(spreadObj));
+  const spreadObj = Q(yield* GetValue(spreadRef));
+  const iteratorRecord = Q(yield* GetIterator(spreadObj));
   while (true) {
-    const next = Q(IteratorStep(iteratorRecord));
+    const next = Q(yield* IteratorStep(iteratorRecord));
     if (next === Value.false) {
       return nextIndex;
     }
-    const nextValue = Q(IteratorValue(next));
-    const idxNum = X(ToUint32(new Value(nextIndex)));
-    const idxStr = X(ToString(idxNum));
-    const status = X(CreateDataProperty(array, idxStr, nextValue));
+    const nextValue = Q(yield* IteratorValue(next));
+    const idxNum = X(yield* ToUint32(new Value(nextIndex)));
+    const idxStr = X(yield* ToString(idxNum));
+    const status = X(yield* CreateDataProperty(array, idxStr, nextValue));
     Assert(status === Value.true);
     nextIndex += 1;
   }
@@ -39,10 +39,10 @@ function* ArrayAccumulation_SpreadElement(SpreadElement, array, nextIndex) {
 
 function* ArrayAccumulation_AssignmentExpression(AssignmentExpression, array, nextIndex) {
   const initResult = yield* Evaluate(AssignmentExpression);
-  const initValue = Q(GetValue(initResult));
-  const idxNum = X(ToUint32(new Value(nextIndex)));
-  const idxStr = X(ToString(idxNum));
-  const created = X(CreateDataProperty(array, idxStr, initValue));
+  const initValue = Q(yield* GetValue(initResult));
+  const idxNum = X(yield* ToUint32(new Value(nextIndex)));
+  const idxStr = X(yield* ToString(idxNum));
+  const created = X(yield* CreateDataProperty(array, idxStr, initValue));
   Assert(created === Value.true);
   return nextIndex + 1;
 }
@@ -79,10 +79,10 @@ function* ArrayAccumulation(ElementList, array, nextIndex) {
 //   `[` ElementList `]`
 //   `[` ElementList `,` Elision `]`
 export function* Evaluate_ArrayLiteral(ArrayLiteral) {
-  const array = X(ArrayCreate(new Value(0)));
+  const array = X(yield* ArrayCreate(new Value(0)));
   const len = yield* ArrayAccumulation(ArrayLiteral.elements, array, 0);
   ReturnIfAbrupt(len);
-  X(Set(array, new Value('length'), ToUint32(new Value(len)), Value.false));
+  X(yield* Set(array, new Value('length'), yield* ToUint32(new Value(len)), Value.false));
   // NOTE: The above Set cannot fail because of the nature of the object returned by ArrayCreate.
   return array;
 }

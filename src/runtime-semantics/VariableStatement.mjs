@@ -34,16 +34,16 @@ export function* Evaluate_VariableDeclaration(VariableDeclaration) {
         init: Initializer,
       } = VariableDeclaration;
       const bindingId = new Value(BindingIdentifier.name);
-      const lhs = Q(ResolveBinding(bindingId, undefined, BindingIdentifier.strict));
+      const lhs = Q(yield* ResolveBinding(bindingId, undefined, BindingIdentifier.strict));
       const rhs = yield* Evaluate(Initializer);
-      const value = Q(GetValue(rhs));
+      const value = Q(yield* GetValue(rhs));
       if (IsAnonymousFunctionDefinition(Initializer)) {
-        const hasNameProperty = Q(HasOwnProperty(value, new Value('name')));
+        const hasNameProperty = Q(yield* HasOwnProperty(value, new Value('name')));
         if (hasNameProperty === Value.false) {
-          X(SetFunctionName(value, bindingId));
+          X(yield* SetFunctionName(value, bindingId));
         }
       }
-      return Q(PutValue(lhs, value));
+      return Q(yield* PutValue(lhs, value));
     }
 
     case isBindingPattern(VariableDeclaration.id) && VariableDeclaration.init !== null: {
@@ -52,7 +52,7 @@ export function* Evaluate_VariableDeclaration(VariableDeclaration) {
         init: Initializer,
       } = VariableDeclaration;
       const rhs = yield* Evaluate(Initializer);
-      const rval = Q(GetValue(rhs));
+      const rval = Q(yield* GetValue(rhs));
       return yield* BindingInitialization_BindingPattern(BindingPattern, rval, Value.undefined);
     }
 

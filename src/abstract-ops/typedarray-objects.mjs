@@ -52,14 +52,14 @@ export const typedArrayInfo = new Map([
 export const numericTypeInfo = new Map([...typedArrayInfo.values()].map((info) => [info.ElementType, info]));
 
 // 22.2.2.1.1 #sec-iterabletolist
-export function IterableToList(items, method) {
-  const iteratorRecord = Q(GetIterator(items, 'sync', method));
+export function* IterableToList(items, method) {
+  const iteratorRecord = Q(yield* GetIterator(items, 'sync', method));
   const values = [];
   let next = Value.true;
   while (next !== Value.false) {
-    next = Q(IteratorStep(iteratorRecord));
+    next = Q(yield* IteratorStep(iteratorRecord));
     if (next !== Value.false) {
-      const nextValue = Q(IteratorValue(next));
+      const nextValue = Q(yield* IteratorValue(next));
       values.push(nextValue);
     }
   }
@@ -80,9 +80,12 @@ export function ValidateTypedArray(O) {
 }
 
 // 22.2.4.2.1 #sec-allocatetypedarray
-export function AllocateTypedArray(constructorName, newTarget, defaultProto, length) {
-  const proto = Q(GetPrototypeFromConstructor(newTarget, defaultProto));
-  const obj = IntegerIndexedObjectCreate(proto, ['ViewedArrayBuffer', 'TypedArrayName', 'ByteLength', 'ByteOffset', 'ArrayLength']);
+export function* AllocateTypedArray(constructorName, newTarget, defaultProto, length) {
+  const proto = Q(yield* GetPrototypeFromConstructor(newTarget, defaultProto));
+  const obj = IntegerIndexedObjectCreate(
+    proto,
+    ['ViewedArrayBuffer', 'TypedArrayName', 'ByteLength', 'ByteOffset', 'ArrayLength'],
+  );
   Assert(obj.ViewedArrayBuffer === Value.undefined);
   obj.TypedArrayName = constructorName;
   if (length === undefined) {
@@ -90,20 +93,20 @@ export function AllocateTypedArray(constructorName, newTarget, defaultProto, len
     obj.ByteOffset = new Value(0);
     obj.ArrayLength = new Value(0);
   } else {
-    Q(AllocateTypedArrayBuffer(obj, length));
+    Q(yield* AllocateTypedArrayBuffer(obj, length));
   }
   return obj;
 }
 
 // 22.2.4.2.2 #sec-allocatetypedarraybuffer
-export function AllocateTypedArrayBuffer(O, length) {
+export function* AllocateTypedArrayBuffer(O, length) {
   Assert(Type(O) === 'Object' && 'ViewedArrayBuffer' in O);
   Assert(O.ViewedArrayBuffer === Value.undefined);
   Assert(length.numberValue() >= 0);
   const constructorName = O.TypedArrayName.stringValue();
   const elementSize = typedArrayInfo.get(constructorName).ElementSize;
   const byteLength = new Value(elementSize * length.numberValue());
-  const data = Q(AllocateArrayBuffer(surroundingAgent.intrinsic('%ArrayBuffer%'), byteLength));
+  const data = Q(yield* AllocateArrayBuffer(surroundingAgent.intrinsic('%ArrayBuffer%'), byteLength));
   O.ViewedArrayBuffer = data;
   O.ByteLength = byteLength;
   O.ByteOffset = new Value(0);
@@ -112,8 +115,8 @@ export function AllocateTypedArrayBuffer(O, length) {
 }
 
 // 22.2.4.6 #typedarray-create
-export function TypedArrayCreate(constructor, argumentList) {
-  const newTypedArray = Q(Construct(constructor, argumentList));
+export function* TypedArrayCreate(constructor, argumentList) {
+  const newTypedArray = Q(yield* Construct(constructor, argumentList));
   Q(ValidateTypedArray(newTypedArray));
   if (argumentList.length === 1 && Type(argumentList[0]) === 'Number') {
     if (newTypedArray.ArrayLength.numberValue() < argumentList[0].numberValue()) {
@@ -124,10 +127,10 @@ export function TypedArrayCreate(constructor, argumentList) {
 }
 
 // 22.2.4.7 #typedarray-species-create
-export function TypedArraySpeciesCreate(exemplar, argumentList) {
+export function* TypedArraySpeciesCreate(exemplar, argumentList) {
   Assert(Type(exemplar) === 'Object' && 'TypedArrayName' in exemplar);
   const intrinsicName = typedArrayInfo.get(exemplar.TypedArrayName.stringValue()).Intrinsic;
   const defaultConstructor = surroundingAgent.intrinsic(intrinsicName);
-  const constructor = Q(SpeciesConstructor(exemplar, defaultConstructor));
-  return Q(TypedArrayCreate(constructor, argumentList));
+  const constructor = Q(yield* SpeciesConstructor(exemplar, defaultConstructor));
+  return Q(yield* TypedArrayCreate(constructor, argumentList));
 }

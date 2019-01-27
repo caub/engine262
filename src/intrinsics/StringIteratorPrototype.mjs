@@ -16,7 +16,7 @@ export function CreateStringIterator(string) {
   return iterator;
 }
 
-function StringIteratorPrototype_next(args, { thisValue }) {
+function* StringIteratorPrototype_next(args, { thisValue }) {
   const O = thisValue;
   if (Type(O) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'String Iterator', O));
@@ -26,13 +26,13 @@ function StringIteratorPrototype_next(args, { thisValue }) {
   }
   const s = O.IteratedString;
   if (s === Value.undefined) {
-    return CreateIterResultObject(Value.undefined, Value.true);
+    return yield* CreateIterResultObject(Value.undefined, Value.true);
   }
   const position = O.StringIteratorNextIndex;
   const len = s.stringValue().length;
   if (position >= len) {
     O.IteratedString = Value.undefined;
-    return CreateIterResultObject(Value.undefined, Value.true);
+    return yield* CreateIterResultObject(Value.undefined, Value.true);
   }
   const first = s.stringValue().charCodeAt(position);
   let resultString;
@@ -48,7 +48,7 @@ function StringIteratorPrototype_next(args, { thisValue }) {
   }
   const resultSize = resultString.stringValue().length;
   O.StringIteratorNextIndex = position + resultSize;
-  return CreateIterResultObject(resultString, Value.false);
+  return yield* CreateIterResultObject(resultString, Value.false);
 }
 
 export function CreateStringIteratorPrototype(realmRec) {

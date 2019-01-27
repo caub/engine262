@@ -7,7 +7,7 @@ import {
 import { Type, Value } from '../value.mjs';
 import { BootstrapPrototype } from './Bootstrap.mjs';
 
-function SetIteratorPrototype_next(args, { thisValue }) {
+function* SetIteratorPrototype_next(args, { thisValue }) {
   const O = thisValue;
   if (Type(O) !== 'Object') {
     return surroundingAgent.Throw('TypeError');
@@ -19,7 +19,7 @@ function SetIteratorPrototype_next(args, { thisValue }) {
   let index = O.SetNextIndex;
   const itemKind = O.SetIterationKind;
   if (Type(s) === 'Undefined') {
-    return CreateIterResultObject(Value.undefined, Value.true);
+    return yield* CreateIterResultObject(Value.undefined, Value.true);
   }
   Assert('SetData' in s);
   const entries = s.SetData;
@@ -30,13 +30,13 @@ function SetIteratorPrototype_next(args, { thisValue }) {
     O.SetNextIndex = index;
     if (e !== undefined) {
       if (itemKind === 'key+value') {
-        return CreateIterResultObject(CreateArrayFromList([e, e]), Value.false);
+        return yield* CreateIterResultObject(yield* CreateArrayFromList([e, e]), Value.false);
       }
-      return CreateIterResultObject(e, Value.false);
+      return yield* CreateIterResultObject(e, Value.false);
     }
   }
   O.IteratedSet = Value.undefined;
-  return CreateIterResultObject(Value.undefined, Value.true);
+  return yield* CreateIterResultObject(Value.undefined, Value.true);
 }
 
 export function CreateSetIteratorPrototype(realmRec) {

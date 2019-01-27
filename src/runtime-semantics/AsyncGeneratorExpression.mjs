@@ -15,7 +15,7 @@ import { Descriptor, Value } from '../value.mjs';
 //   AsyncGeneratorExpression :
 //     `async` `function` `*` `(` FormalParameters `)` `{` AsyncGeneratorBody `}`
 //     `async` `function` `*` BindingIdentifier `(` FormalParameters `)` `{` AsyncGeneratorBody `}`
-export function Evaluate_AsyncGeneratorExpression(AsyncGeneratorExpression) {
+export function* Evaluate_AsyncGeneratorExpression(AsyncGeneratorExpression) {
   const {
     id: BindingIdentifier,
     params: FormalParameters,
@@ -31,21 +31,17 @@ export function Evaluate_AsyncGeneratorExpression(AsyncGeneratorExpression) {
     name = new Value(BindingIdentifier.name);
     envRec.CreateImmutableBinding(name, Value.false);
   }
-  const closure = X(AsyncGeneratorFunctionCreate('Normal', FormalParameters, AsyncGeneratorExpression, funcEnv, strict));
+  const closure = X(yield* AsyncGeneratorFunctionCreate('Normal', FormalParameters, AsyncGeneratorExpression, funcEnv, strict));
   const prototype = ObjectCreate(surroundingAgent.intrinsic('%AsyncGeneratorPrototype%'));
-  X(DefinePropertyOrThrow(
-    closure,
-    new Value('prototype'),
-    Descriptor({
-      Value: prototype,
-      Writable: Value.true,
-      Enumerable: Value.false,
-      Configurable: Value.false,
-    }),
-  ));
+  X(yield* DefinePropertyOrThrow(closure, new Value('prototype'), Descriptor({
+    Value: prototype,
+    Writable: Value.true,
+    Enumerable: Value.false,
+    Configurable: Value.false,
+  })));
   closure.SourceText = sourceTextMatchedBy(AsyncGeneratorExpression);
   if (BindingIdentifier) {
-    X(SetFunctionName(closure, name));
+    X(yield* SetFunctionName(closure, name));
     envRec.InitializeBinding(name, closure);
   }
   return closure;

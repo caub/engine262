@@ -158,10 +158,12 @@ module.exports = ({ types: t, template }) => {
         if (path.node.callee.name === 'Q' || path.node.callee.name === 'ReturnIfAbrupt') {
           const [argument] = path.node.arguments;
 
+          /*
           if (t.isReturnStatement(path.parentPath)) {
             path.replaceWith(argument);
             return;
           }
+          */
 
           state.needCompletion = true;
 

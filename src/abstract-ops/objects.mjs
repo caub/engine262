@@ -32,12 +32,12 @@ import {
 import { Q, X } from '../completion.mjs';
 
 // 9.1.1.1 OrdinaryGetPrototypeOf
-export function OrdinaryGetPrototypeOf(O) {
+export function* OrdinaryGetPrototypeOf(O) {
   return O.Prototype;
 }
 
 // 9.1.2.1 OrdinarySetPrototypeOf
-export function OrdinarySetPrototypeOf(O, V) {
+export function* OrdinarySetPrototypeOf(O, V) {
   Assert(Type(V) === 'Object' || Type(V) === 'Null');
 
   const extensible = O.Extensible;
@@ -77,7 +77,7 @@ export function OrdinaryPreventExtensions(O) {
 }
 
 // 9.1.5.1 OrdinaryGetOwnProperty
-export function OrdinaryGetOwnProperty(O, P) {
+export function* OrdinaryGetOwnProperty(O, P) {
   Assert(IsPropertyKey(P));
 
   if (!O.properties.has(P)) {
@@ -102,9 +102,9 @@ export function OrdinaryGetOwnProperty(O, P) {
 }
 
 // 9.1.6.1 OrdinaryDefineOwnProperty
-export function OrdinaryDefineOwnProperty(O, P, Desc) {
-  const current = Q(O.GetOwnProperty(P));
-  const extensible = Q(IsExtensible(O));
+export function* OrdinaryDefineOwnProperty(O, P, Desc) {
+  const current = Q(yield* O.GetOwnProperty(P));
+  const extensible = Q(yield* IsExtensible(O));
   return ValidateAndApplyPropertyDescriptor(O, P, extensible, Desc, current);
 }
 
@@ -229,31 +229,31 @@ export function ValidateAndApplyPropertyDescriptor(O, P, extensible, Desc, curre
 }
 
 // 9.1.7.1 OrdinaryHasProperty
-export function OrdinaryHasProperty(O, P) {
+export function* OrdinaryHasProperty(O, P) {
   Assert(IsPropertyKey(P));
 
-  const hasOwn = Q(O.GetOwnProperty(P));
+  const hasOwn = Q(yield* O.GetOwnProperty(P));
   if (Type(hasOwn) !== 'Undefined') {
     return Value.true;
   }
-  const parent = Q(O.GetPrototypeOf());
+  const parent = Q(yield* O.GetPrototypeOf());
   if (Type(parent) !== 'Null') {
-    return Q(parent.HasProperty(P));
+    return Q(yield* parent.HasProperty(P));
   }
   return Value.false;
 }
 
 // 9.1.8.1
-export function OrdinaryGet(O, P, Receiver) {
+export function* OrdinaryGet(O, P, Receiver) {
   Assert(IsPropertyKey(P));
 
-  const desc = Q(O.GetOwnProperty(P));
+  const desc = Q(yield* O.GetOwnProperty(P));
   if (Type(desc) === 'Undefined') {
-    const parent = Q(O.GetPrototypeOf());
+    const parent = Q(yield* O.GetPrototypeOf());
     if (Type(parent) === 'Null') {
       return Value.undefined;
     }
-    return Q(parent.Get(P, Receiver));
+    return Q(yield* parent.Get(P, Receiver));
   }
   if (IsDataDescriptor(desc)) {
     return desc.Value;
@@ -263,24 +263,24 @@ export function OrdinaryGet(O, P, Receiver) {
   if (Type(getter) === 'Undefined') {
     return Value.undefined;
   }
-  return Q(Call(getter, Receiver));
+  return Q(yield* Call(getter, Receiver));
 }
 
 // 9.1.9.1 OrdinarySet
-export function OrdinarySet(O, P, V, Receiver) {
+export function* OrdinarySet(O, P, V, Receiver) {
   Assert(IsPropertyKey(P));
-  const ownDesc = Q(O.GetOwnProperty(P));
-  return OrdinarySetWithOwnDescriptor(O, P, V, Receiver, ownDesc);
+  const ownDesc = Q(yield* O.GetOwnProperty(P));
+  return yield* OrdinarySetWithOwnDescriptor(O, P, V, Receiver, ownDesc);
 }
 
 // 9.1.9.2 OrdinarySetWithOwnDescriptor
-export function OrdinarySetWithOwnDescriptor(O, P, V, Receiver, ownDesc) {
+export function* OrdinarySetWithOwnDescriptor(O, P, V, Receiver, ownDesc) {
   Assert(IsPropertyKey(P));
 
   if (Type(ownDesc) === 'Undefined') {
-    const parent = Q(O.GetPrototypeOf());
+    const parent = Q(yield* O.GetPrototypeOf());
     if (Type(parent) !== 'Null') {
-      return Q(parent.Set(P, V, Receiver));
+      return Q(yield* parent.Set(P, V, Receiver));
     }
     ownDesc = Descriptor({
       Value: Value.undefined,
@@ -298,7 +298,7 @@ export function OrdinarySetWithOwnDescriptor(O, P, V, Receiver, ownDesc) {
       return Value.false;
     }
 
-    const existingDescriptor = Q(Receiver.GetOwnProperty(P));
+    const existingDescriptor = Q(yield* Receiver.GetOwnProperty(P));
     if (Type(existingDescriptor) !== 'Undefined') {
       if (IsAccessorDescriptor(existingDescriptor)) {
         return Value.false;
@@ -307,9 +307,9 @@ export function OrdinarySetWithOwnDescriptor(O, P, V, Receiver, ownDesc) {
         return Value.false;
       }
       const valueDesc = Descriptor({ Value: V });
-      return Q(Receiver.DefineOwnProperty(P, valueDesc));
+      return Q(yield* Receiver.DefineOwnProperty(P, valueDesc));
     }
-    return CreateDataProperty(Receiver, P, V);
+    return yield* CreateDataProperty(Receiver, P, V);
   }
 
   Assert(IsAccessorDescriptor(ownDesc));
@@ -317,14 +317,14 @@ export function OrdinarySetWithOwnDescriptor(O, P, V, Receiver, ownDesc) {
   if (setter === undefined || Type(setter) === 'Undefined') {
     return Value.false;
   }
-  Q(Call(setter, Receiver, [V]));
+  Q(yield* Call(setter, Receiver, [V]));
   return Value.true;
 }
 
 // 9.1.10.1 OrdinaryDelete
-export function OrdinaryDelete(O, P) {
+export function* OrdinaryDelete(O, P) {
   Assert(IsPropertyKey(P));
-  const desc = Q(O.GetOwnProperty(P));
+  const desc = Q(yield* O.GetOwnProperty(P));
   if (Type(desc) === 'Undefined') {
     return Value.true;
   }
@@ -336,13 +336,13 @@ export function OrdinaryDelete(O, P) {
 }
 
 // 9.1.11.1
-export function OrdinaryOwnPropertyKeys(O) {
+export function* OrdinaryOwnPropertyKeys(O) {
   const keys = [];
 
   // For each own property key P of O that is an array index, in ascending numeric index order, do
   //   Add P as the last element of keys.
   for (const P of O.properties.keys()) {
-    if (isArrayIndex(P)) {
+    if (yield* isArrayIndex(P)) {
       keys.push(P);
     }
   }
@@ -352,7 +352,7 @@ export function OrdinaryOwnPropertyKeys(O) {
   // P is not an array index, in ascending chronological order of property creation, do
   //   Add P as the last element of keys.
   for (const P of O.properties.keys()) {
-    if (Type(P) === 'String' && isArrayIndex(P) === false) {
+    if (Type(P) === 'String' && (yield* isArrayIndex(P)) === false) {
       keys.push(P);
     }
   }
@@ -393,21 +393,21 @@ export function ObjectCreate(proto, internalSlotsList) {
 }
 
 // 9.1.13 OrdinaryCreateFromConstructor
-export function OrdinaryCreateFromConstructor(constructor, intrinsicDefaultProto, internalSlotsList) {
+export function* OrdinaryCreateFromConstructor(constructor, intrinsicDefaultProto, internalSlotsList) {
   // Assert: intrinsicDefaultProto is a String value that
   // is this specification's name of an intrinsic object.
-  const proto = Q(GetPrototypeFromConstructor(constructor, intrinsicDefaultProto));
+  const proto = Q(yield* GetPrototypeFromConstructor(constructor, intrinsicDefaultProto));
   return ObjectCreate(proto, internalSlotsList);
 }
 
 // 9.1.14 GetPrototypeFromConstructor
-export function GetPrototypeFromConstructor(constructor, intrinsicDefaultProto) {
+export function* GetPrototypeFromConstructor(constructor, intrinsicDefaultProto) {
   // Assert: intrinsicDefaultProto is a String value that
   // is this specification's name of an intrinsic object.
   Assert(IsCallable(constructor) === Value.true);
-  let proto = Q(Get(constructor, new Value('prototype')));
+  let proto = Q(yield* Get(constructor, new Value('prototype')));
   if (Type(proto) !== 'Object') {
-    const realm = Q(GetFunctionRealm(constructor));
+    const realm = Q(yield* GetFunctionRealm(constructor));
     proto = realm.Intrinsics[intrinsicDefaultProto];
   }
   return proto;
@@ -430,7 +430,7 @@ export function IntegerIndexedObjectCreate(prototype, internalSlotsList) {
 }
 
 // 9.4.5.8 #sec-integerindexedelementget
-export function IntegerIndexedElementGet(O, index) {
+export function* IntegerIndexedElementGet(O, index) {
   Assert(Type(index) === 'Number');
   Assert(O instanceof ObjectValue
       && 'ViewedArrayBuffer' in O
@@ -463,14 +463,14 @@ export function IntegerIndexedElementGet(O, index) {
 }
 
 // 9.4.5.9 #sec-integerindexedelementset
-export function IntegerIndexedElementSet(O, index, value) {
+export function* IntegerIndexedElementSet(O, index, value) {
   Assert(Type(index) === 'Number');
   Assert(O instanceof ObjectValue
       && 'ViewedArrayBuffer' in O
       && 'ArrayLength' in O
       && 'ByteOffset' in O
       && 'TypedArrayName' in O);
-  const numValue = Q(ToNumber(value));
+  const numValue = Q(yield* ToNumber(value));
   const buffer = O.ViewedArrayBuffer;
   if (IsDetachedBuffer(buffer)) {
     return surroundingAgent.Throw('TypeError', 'Attempt to access detached ArrayBuffer');
@@ -492,6 +492,6 @@ export function IntegerIndexedElementSet(O, index, value) {
     ElementType: elementType,
   } = typedArrayInfo.get(arrayTypeName);
   const indexedPosition = new Value((index.numberValue() * elementSize) + offset.numberValue());
-  X(SetValueInBuffer(buffer, indexedPosition, elementType, numValue, true, 'Unordered'));
+  X(yield* SetValueInBuffer(buffer, indexedPosition, elementType, numValue, true, 'Unordered'));
   return Value.true;
 }

@@ -49,7 +49,7 @@ export function captureStack(O) {
       let string = '\n  at ';
       const functionName = e.Function.properties.get(new Value('name'));
       if (functionName) {
-        string += X(ToString(functionName.Value)).stringValue();
+        string += X(unwind(ToString(functionName.Value))).stringValue();
       } else {
         string += '<anonymous>';
       }
@@ -60,15 +60,15 @@ export function captureStack(O) {
     })
     .reverse();
 
-  const errorString = X(ToString(O)).stringValue();
+  const errorString = X(unwind(ToString(O))).stringValue();
   const trace = `${errorString}${stack.join('')}`;
 
-  X(DefinePropertyOrThrow(O, new Value('stack'), Descriptor({
+  X(unwind(DefinePropertyOrThrow(O, new Value('stack'), Descriptor({
     Value: new Value(trace),
     Writable: Value.true,
     Enumerable: Value.false,
     Configurable: Value.false,
-  })));
+  }))));
 }
 
 function inlineInspect(V) {

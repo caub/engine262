@@ -15,7 +15,7 @@ import {
 import { Construct, Assert } from './abstract-ops/all.mjs';
 import { GlobalDeclarationInstantiation } from './runtime-semantics/all.mjs';
 import { Evaluate_Script } from './evaluator.mjs';
-import { msg } from './helpers.mjs';
+import { msg, unwind } from './helpers.mjs';
 
 export class Agent {
   constructor(options = {}) {
@@ -62,7 +62,7 @@ export class Agent {
 
   Throw(type, message) {
     const cons = this.currentRealmRecord.Intrinsics[`%${type}%`];
-    const error = Construct(cons, message ? [new Value(message)] : []);
+    const error = unwind(Construct(cons, message ? [new Value(message)] : []));
     error.hostTrace = new Error().stack;
     return new ThrowCompletion(error);
   }
@@ -168,7 +168,7 @@ export function AgentSignifier() {
 }
 
 // 15.1.10 #sec-runtime-semantics-scriptevaluation
-export function ScriptEvaluation(scriptRecord) {
+export function* ScriptEvaluation(scriptRecord) {
   const globalEnv = scriptRecord.Realm.GlobalEnv;
   const scriptCtx = new ExecutionContext();
   scriptCtx.Function = Value.null;
@@ -180,9 +180,9 @@ export function ScriptEvaluation(scriptRecord) {
   // Suspend runningExecutionContext
   surroundingAgent.executionContextStack.push(scriptCtx);
   const scriptBody = scriptRecord.ECMAScriptCode.body;
-  let result = EnsureCompletion(GlobalDeclarationInstantiation(scriptBody, globalEnv));
+  let result = EnsureCompletion(yield* GlobalDeclarationInstantiation(scriptBody, globalEnv));
   if (result.Type === 'normal') {
-    result = Evaluate_Script(scriptBody, globalEnv);
+    result = yield* Evaluate_Script(scriptBody, globalEnv);
   }
   if (result.Type === 'normal' && !result.Value) {
     result = new NormalCompletion(Value.undefined);

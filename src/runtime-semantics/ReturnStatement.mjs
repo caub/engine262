@@ -18,7 +18,7 @@ export function* Evaluate_ReturnStatement({ argument: Expression }) {
   } else {
     // ReturnStatement : return Expression `;`
     const exprRef = yield* Evaluate(Expression);
-    let exprValue = Q(GetValue(exprRef));
+    let exprValue = Q(yield* GetValue(exprRef));
     if (X(GetGeneratorKind()) === 'async') {
       exprValue = Q(yield* Await(exprValue));
     }

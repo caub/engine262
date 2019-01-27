@@ -42,7 +42,7 @@ function* CatchClauseEvaluation({ param: CatchParameter, body: Block }, thrownVa
   const catchEnv = NewDeclarativeEnvironment(oldEnv);
   const catchEnvRec = catchEnv.EnvironmentRecord;
   for (const argName of BoundNames_CatchParameter(CatchParameter)) {
-    X(catchEnvRec.CreateMutableBinding(new Value(argName), false));
+    X(yield* catchEnvRec.CreateMutableBinding(new Value(argName), false));
   }
   surroundingAgent.runningExecutionContext.LexicalEnvironment = catchEnv;
   const status = yield* BindingInitialization_CatchParameter(CatchParameter, thrownValue, catchEnv);

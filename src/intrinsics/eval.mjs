@@ -2,8 +2,6 @@ import { ExecutionContext, HostEnsureCanCompileStrings, surroundingAgent } from 
 import {
   Assert,
   CreateBuiltinFunction,
-  SetFunctionLength,
-  SetFunctionName,
   // GetThisEnvironment,
 } from '../abstract-ops/all.mjs';
 import { InstantiateFunctionObject } from '../runtime-semantics/all.mjs';
@@ -43,9 +41,10 @@ import {
   GlobalEnvironmentRecord,
   ObjectEnvironmentRecord,
 } from '../environment.mjs';
+import { setFunctionProps } from './Bootstrap.mjs';
 
 // 18.2.1.3 #sec-evaldeclarationinstantiation
-function EvalDeclarationInstantiation(body, varEnv, lexEnv, strict) {
+function* EvalDeclarationInstantiation(body, varEnv, lexEnv, strict) {
   const varNames = VarDeclaredNames_ScriptBody(body).map(Value);
   const varDeclarations = VarScopedDeclarations_ScriptBody(body);
   const lexEnvRec = lexEnv.EnvironmentRecord;
@@ -53,7 +52,7 @@ function EvalDeclarationInstantiation(body, varEnv, lexEnv, strict) {
   if (strict === false) {
     if (varEnvRec instanceof GlobalEnvironmentRecord) {
       for (const name of varNames) {
-        if (varEnvRec.HasLexicalDeclaration(name) === Value.true) {
+        if ((yield* varEnvRec.HasLexicalDeclaration(name)) === Value.true) {
           return surroundingAgent.Throw('SyntaxError');
         }
         // NOTE: eval will not create a global var declaration that would be shadowed by a global lexical declaration.
@@ -65,7 +64,7 @@ function EvalDeclarationInstantiation(body, varEnv, lexEnv, strict) {
       const thisEnvRec = thisLex.EnvironmentRecord;
       if (!(thisEnvRec instanceof ObjectEnvironmentRecord)) {
         for (const name of varNames) {
-          if (thisEnvRec.HasBinding(name) === Value.true) {
+          if ((yield* thisEnvRec.HasBinding(name)) === Value.true) {
             return surroundingAgent.Throw('SyntaxError');
             // NOTE: Annex B.3.5 defines alternate semantics for the above step.
           }
@@ -84,7 +83,7 @@ function EvalDeclarationInstantiation(body, varEnv, lexEnv, strict) {
       const fn = new Value(BoundNames_FunctionDeclaration(d)[0]);
       if (!declaredFunctionNames.includes(fn)) {
         if (varEnvRec instanceof GlobalEnvironmentRecord) {
-          const fnDefinable = Q(varEnvRec.CanDeclareGlobalFunction(fn));
+          const fnDefinable = Q(yield* varEnvRec.CanDeclareGlobalFunction(fn));
           if (fnDefinable === Value.false) {
             return surroundingAgent.Throw('TypeError');
           }
@@ -109,7 +108,7 @@ function EvalDeclarationInstantiation(body, varEnv, lexEnv, strict) {
       for (const vn of boundNames.map(Value)) {
         if (!declaredFunctionNames.includes(vn)) {
           if (varEnvRec instanceof GlobalEnvironmentRecord) {
-            const vnDefinable = Q(varEnvRec.CanDeclareGlobalVar(vn));
+            const vnDefinable = Q(yield* varEnvRec.CanDeclareGlobalVar(vn));
             if (vnDefinable === Value.false) {
               return surroundingAgent.Throw('TypeError');
             }
@@ -127,9 +126,9 @@ function EvalDeclarationInstantiation(body, varEnv, lexEnv, strict) {
   for (const d of lexDeclarations) {
     for (const dn of BoundNames_Declaration(d).map(Value)) {
       if (IsConstantDeclaration(d)) {
-        Q(lexEnvRec.CreateImmutableBinding(dn, Value.true));
+        Q(yield* lexEnvRec.CreateImmutableBinding(dn, Value.true));
       } else {
-        Q(lexEnvRec.CreateMutableBinding(dn, Value.false));
+        Q(yield* lexEnvRec.CreateMutableBinding(dn, Value.false));
       }
     }
   }
@@ -137,28 +136,28 @@ function EvalDeclarationInstantiation(body, varEnv, lexEnv, strict) {
     const fn = new Value(BoundNames_FunctionDeclaration(f)[0]);
     const fo = InstantiateFunctionObject(f, lexEnv);
     if (varEnvRec instanceof GlobalEnvironmentRecord) {
-      Q(varEnvRec.CreateGlobalFunctionBinding(fn, fo, Value.true));
+      Q(yield* varEnvRec.CreateGlobalFunctionBinding(fn, fo, Value.true));
     } else {
-      const bindingExists = varEnvRec.HasBinding(fn);
+      const bindingExists = yield* varEnvRec.HasBinding(fn);
       if (bindingExists === Value.false) {
-        const status = X(varEnvRec.CreateMutableBinding(fn, Value.true));
+        const status = X(yield* varEnvRec.CreateMutableBinding(fn, Value.true));
         Assert(!(status instanceof AbruptCompletion));
-        X(varEnvRec.InitializeBinding(fn, fo));
+        X(yield* varEnvRec.InitializeBinding(fn, fo));
       } else {
-        X(varEnvRec.SetMutableBinding(fn, fo, Value.false));
+        X(yield* varEnvRec.SetMutableBinding(fn, fo, Value.false));
       }
     }
   }
   for (const vn of declaredVarNames) {
     if (!declaredFunctionNames.includes(vn)) {
       if (varEnvRec instanceof GlobalEnvironmentRecord) {
-        Q(varEnvRec.CreateGlobalVarBinding(vn, Value.true));
+        Q(yield* varEnvRec.CreateGlobalVarBinding(vn, Value.true));
       } else {
-        const bindingExists = varEnvRec.HasBinding(vn);
+        const bindingExists = yield* varEnvRec.HasBinding(vn);
         if (bindingExists === Value.false) {
-          const status = X(varEnvRec.CreateMutableBinding(vn, Value.true));
+          const status = X(yield* varEnvRec.CreateMutableBinding(vn, Value.true));
           Assert(!(status instanceof AbruptCompletion));
-          X(varEnvRec.InitializeBinding(vn, Value.undefined));
+          X(yield* varEnvRec.InitializeBinding(vn, Value.undefined));
         }
       }
     }
@@ -167,7 +166,7 @@ function EvalDeclarationInstantiation(body, varEnv, lexEnv, strict) {
 }
 
 // 18.2.1.1 #sec-performeval
-export function PerformEval(x, evalRealm, strictCaller, direct) {
+export function* PerformEval(x, evalRealm, strictCaller, direct) {
   // Assert: If direct is false, then strictCaller is also false.
   Assert(!(direct === false) || strictCaller === false);
   if (Type(x) !== 'String') {
@@ -227,9 +226,9 @@ export function PerformEval(x, evalRealm, strictCaller, direct) {
   evalCtx.VariableEnvironment = varEnv;
   evalCtx.LexicalEnvironment = lexEnv;
   surroundingAgent.executionContextStack.push(evalCtx);
-  let result = EvalDeclarationInstantiation(body, varEnv, lexEnv, strictEval);
+  let result = yield* EvalDeclarationInstantiation(body, varEnv, lexEnv, strictEval);
   if (result.Type === 'normal') {
-    result = Evaluate_Script(body);
+    result = yield* Evaluate_Script(body);
   }
   if (result.Type === 'normal' && result.Value === undefined) {
     result = new NormalCompletion(Value.undefined);
@@ -239,19 +238,17 @@ export function PerformEval(x, evalRealm, strictCaller, direct) {
   return Completion(result);
 }
 
-function TheEval([x = Value.undefined]) {
+function* TheEval([x = Value.undefined]) {
   Assert(surroundingAgent.executionContextStack.length >= 2);
   const callerContext = surroundingAgent.executionContextStack[surroundingAgent.executionContextStack.length - 2];
   const callerRealm = callerContext.Realm;
   const calleeRealm = surroundingAgent.currentRealmRecord;
   Q(HostEnsureCanCompileStrings(callerRealm, calleeRealm));
-  return Q(PerformEval(x, calleeRealm, false, false));
+  return Q(yield* PerformEval(x, calleeRealm, false, false));
 }
 
 export function CreateEval(realmRec) {
   const it = CreateBuiltinFunction(TheEval, [], realmRec);
-  SetFunctionName(it, new Value('eval'));
-  SetFunctionLength(it, new Value(1));
-
+  setFunctionProps(it, new Value('eval'), new Value(1));
   realmRec.Intrinsics['%eval%'] = it;
 }

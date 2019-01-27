@@ -10,7 +10,7 @@ import {
   Value,
   wellKnownSymbols,
 } from '../value.mjs';
-import { Q, X } from '../completion.mjs';
+import { Q } from '../completion.mjs';
 import { BootstrapPrototype } from './Bootstrap.mjs';
 import { msg } from '../helpers.mjs';
 
@@ -48,7 +48,7 @@ function MapProto_clear(args, { thisValue }) {
   return Value.undefined;
 }
 
-function MapProto_delete([key = Value.undefined], { thisValue }) {
+function* MapProto_delete([key = Value.undefined], { thisValue }) {
   const M = thisValue;
   if (Type(M) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'Map', M));
@@ -79,7 +79,7 @@ function MapProto_entries(args, { thisValue }) {
   return Q(CreateMapIterator(M, 'key+value'));
 }
 
-function MapProto_forEach([callbackfn, thisArg], { thisValue }) {
+function* MapProto_forEach([callbackfn, thisArg], { thisValue }) {
   const M = thisValue;
   if (Type(M) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'Map', M));
@@ -99,13 +99,13 @@ function MapProto_forEach([callbackfn, thisArg], { thisValue }) {
   const entries = M.MapData;
   for (const e of entries) {
     if (e.Key !== undefined) {
-      Q(Call(callbackfn, T, [e.Value, e.Key, M]));
+      Q(yield* Call(callbackfn, T, [e.Value, e.Key, M]));
     }
   }
   return Value.undefined;
 }
 
-function MapProto_get([key = Value.undefined], { thisValue }) {
+function* MapProto_get([key = Value.undefined], { thisValue }) {
   const M = thisValue;
   if (Type(M) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'Map', M));
@@ -122,7 +122,7 @@ function MapProto_get([key = Value.undefined], { thisValue }) {
   return Value.undefined;
 }
 
-function MapProto_has([key = Value.undefined], { thisValue }) {
+function* MapProto_has([key = Value.undefined], { thisValue }) {
   const M = thisValue;
   if (Type(M) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'Map', M));
@@ -144,7 +144,7 @@ function MapProto_keys(args, { thisValue }) {
   return Q(CreateMapIterator(M, 'key'));
 }
 
-function MapProto_set([key = Value.undefined, value = Value.undefined], { thisValue }) {
+function* MapProto_set([key = Value.undefined, value = Value.undefined], { thisValue }) {
   const M = thisValue;
   if (Type(M) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'Map', M));
@@ -204,8 +204,7 @@ export function CreateMapPrototype(realmRec) {
     ['values', MapProto_values, 0],
   ], realmRec.Intrinsics['%ObjectPrototype%'], 'Map');
 
-  const entriesFunc = X(proto.GetOwnProperty(new Value('entries')));
-  X(proto.DefineOwnProperty(wellKnownSymbols.iterator, entriesFunc));
+  proto.properties.set(wellKnownSymbols.iterator, proto.properties.get(new Value('entries')));
 
   realmRec.Intrinsics['%MapPrototype%'] = proto;
 }

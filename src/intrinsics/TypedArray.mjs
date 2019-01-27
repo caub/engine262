@@ -19,12 +19,12 @@ import {
 import { BootstrapConstructor } from './Bootstrap.mjs';
 
 // 22.2.1 #sec-%typedarray%-intrinsic-object
-function TypedArrayConstructor() {
+function* TypedArrayConstructor() {
   return surroundingAgent.Throw('TypeError', '%TypedArray% is not directly constructable');
 }
 
 // 22.2.2.1 #sec-%typedarray%.from
-function TypedArray_from([source = Value.undefined, mapfn, thisArg], { thisValue }) {
+function* TypedArray_from([source = Value.undefined, mapfn, thisArg], { thisValue }) {
   const C = thisValue;
   if (IsConstructor(C) === Value.false) {
     return surroundingAgent.Throw('TypeError', msg('NotAConstructor', C));
@@ -39,22 +39,22 @@ function TypedArray_from([source = Value.undefined, mapfn, thisArg], { thisValue
     mapping = false;
   }
   const T = thisArg !== undefined ? thisArg : Value.undefined;
-  const usingIterator = Q(GetMethod(source, wellKnownSymbols.iterator));
+  const usingIterator = Q(yield* GetMethod(source, wellKnownSymbols.iterator));
   if (usingIterator !== Value.undefined) {
-    const values = Q(IterableToList(source, usingIterator));
+    const values = Q(yield* IterableToList(source, usingIterator));
     const len = values.length;
-    const targetObj = Q(TypedArrayCreate(C, [new Value(len)]));
+    const targetObj = Q(yield* TypedArrayCreate(C, [new Value(len)]));
     let k = 0;
     while (k < len) {
-      const Pk = X(ToString(new Value(k)));
+      const Pk = X(yield* ToString(new Value(k)));
       const kValue = values.shift();
       let mappedValue;
       if (mapping) {
-        mappedValue = Q(Call(mapfn, T, [kValue, new Value(k)]));
+        mappedValue = Q(yield* Call(mapfn, T, [kValue, new Value(k)]));
       } else {
         mappedValue = kValue;
       }
-      Q(Set(targetObj, Pk, mappedValue, Value.true));
+      Q(yield* Set(targetObj, Pk, mappedValue, Value.true));
       k += 1;
     }
     Assert(values.length === 0);
@@ -63,46 +63,46 @@ function TypedArray_from([source = Value.undefined, mapfn, thisArg], { thisValue
 
   // NOTE: source is not an Iterable so assume it is already an array-like
   // object.
-  const arrayLike = X(ToObject(source));
-  const arrayLikeLength = Q(Get(arrayLike, new Value('length')));
-  const len = Q(ToLength(arrayLikeLength)).numberValue();
-  const targetObj = Q(TypedArrayCreate(C, [new Value(len)]));
+  const arrayLike = X(yield* ToObject(source));
+  const arrayLikeLength = Q(yield* Get(arrayLike, new Value('length')));
+  const len = Q(yield* ToLength(arrayLikeLength)).numberValue();
+  const targetObj = Q(yield* TypedArrayCreate(C, [new Value(len)]));
   let k = 0;
   while (k < len) {
-    const Pk = X(ToString(new Value(k)));
-    const kValue = Q(Get(arrayLike, Pk));
+    const Pk = X(yield* ToString(new Value(k)));
+    const kValue = Q(yield* Get(arrayLike, Pk));
     let mappedValue;
     if (mapping) {
-      mappedValue = Q(Call(mapfn, T, [kValue, new Value(k)]));
+      mappedValue = Q(yield* Call(mapfn, T, [kValue, new Value(k)]));
     } else {
       mappedValue = kValue;
     }
-    Q(Set(targetObj, Pk, mappedValue, Value.true));
+    Q(yield* Set(targetObj, Pk, mappedValue, Value.true));
     k += 1;
   }
   return targetObj;
 }
 
 // 22.2.2.2 #sec-%typedarray%.of
-function TypedArray_of(items, { thisValue }) {
+function* TypedArray_of(items, { thisValue }) {
   const len = items.length;
   const C = thisValue;
   if (IsConstructor(C) === Value.false) {
     return surroundingAgent.Throw('TypeError', msg('NotAConstructor', C));
   }
-  const newObj = Q(TypedArrayCreate(C, [new Value(len)]));
+  const newObj = Q(yield* TypedArrayCreate(C, [new Value(len)]));
   let k = 0;
   while (k < len) {
     const kValue = items[k];
-    const Pk = X(ToString(new Value(k)));
-    Q(Set(newObj, Pk, kValue, Value.true));
+    const Pk = X(yield* ToString(new Value(k)));
+    Q(yield* Set(newObj, Pk, kValue, Value.true));
     k += 1;
   }
   return newObj;
 }
 
 // 22.2.2.4 #sec-get-%typedarray%-@@species
-function TypedArray_speciesGetter(args, { thisValue }) {
+function* TypedArray_speciesGetter(args, { thisValue }) {
   return thisValue;
 }
 

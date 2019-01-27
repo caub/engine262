@@ -21,7 +21,7 @@ import { Q, X } from '../completion.mjs';
 import { BootstrapConstructor } from './Bootstrap.mjs';
 
 // 21.1.1.1 #sec-string-constructor-string-value
-function StringConstructor(args, { NewTarget }) {
+function* StringConstructor(args, { NewTarget }) {
   let s;
   if (args.length === 0) {
     // String ( )
@@ -32,22 +32,22 @@ function StringConstructor(args, { NewTarget }) {
     if (NewTarget === Value.undefined && Type(value) === 'Symbol') {
       return X(SymbolDescriptiveString(value));
     }
-    s = Q(ToString(value));
+    s = Q(yield* ToString(value));
   }
   if (NewTarget === Value.undefined) {
     return s;
   }
-  return X(StringCreate(s, Q(GetPrototypeFromConstructor(NewTarget, '%StringPrototype%'))));
+  return X(yield* StringCreate(s, Q(yield* GetPrototypeFromConstructor(NewTarget, '%StringPrototype%'))));
 }
 
 // 21.1.2.1 #sec-string.fromcharcode
-function String_fromCharCode(codeUnits) {
+function* String_fromCharCode(codeUnits) {
   const length = codeUnits.length;
   const elements = [];
   let nextIndex = 0;
   while (nextIndex < length) {
     const next = codeUnits[nextIndex];
-    const nextCU = Q(ToUint16(next));
+    const nextCU = Q(yield* ToUint16(next));
     elements.push(nextCU);
     nextIndex += 1;
   }
@@ -56,14 +56,14 @@ function String_fromCharCode(codeUnits) {
 }
 
 // 21.1.2.2 #sec-string.fromcodepoint
-function String_fromCodePoint(codePoints) {
+function* String_fromCodePoint(codePoints) {
   const length = codePoints.length;
   const elements = [];
   let nextIndex = 0;
   while (nextIndex < length) {
     const next = codePoints[nextIndex];
-    const nextCP = Q(ToNumber(next));
-    if (SameValue(nextCP, X(ToInteger(nextCP))) === Value.false) {
+    const nextCP = Q(yield* ToNumber(next));
+    if (SameValue(nextCP, X(yield* ToInteger(nextCP))) === Value.false) {
       return surroundingAgent.Throw('RangeError');
     }
     if (nextCP.numberValue() < 0 || nextCP.numberValue() > 0x10FFFF) {
@@ -77,13 +77,13 @@ function String_fromCodePoint(codePoints) {
 }
 
 // 21.1.2.4 #sec-string.raw
-function String_raw([template = Value.undefined, ...substitutions]) {
+function* String_raw([template = Value.undefined, ...substitutions]) {
   const numberOfSubstitutions = substitutions.length;
-  const cooked = Q(ToObject(template));
-  const rawProp = Q(Get(cooked, new Value('raw')));
-  const raw = Q(ToObject(rawProp));
-  const lenProp = Q(Get(raw, new Value('length')));
-  const literalSegments = Q(ToLength(lenProp)).numberValue();
+  const cooked = Q(yield* ToObject(template));
+  const rawProp = Q(yield* Get(cooked, new Value('raw')));
+  const raw = Q(yield* ToObject(rawProp));
+  const lenProp = Q(yield* Get(raw, new Value('length')));
+  const literalSegments = Q(yield* ToLength(lenProp)).numberValue();
   if (literalSegments <= 0) {
     return new Value('');
   }
@@ -91,9 +91,9 @@ function String_raw([template = Value.undefined, ...substitutions]) {
   const stringElements = [];
   let nextIndex = 0;
   while (true) {
-    const nextKey = X(ToString(new Value(nextIndex)));
-    const nextSegProp = Q(Get(raw, nextKey));
-    const nextSeg = Q(ToString(nextSegProp));
+    const nextKey = X(yield* ToString(new Value(nextIndex)));
+    const nextSegProp = Q(yield* Get(raw, nextKey));
+    const nextSeg = Q(yield* ToString(nextSegProp));
     stringElements.push(nextSeg.stringValue());
     if (nextIndex + 1 === literalSegments) {
       return new Value(stringElements.join(''));
@@ -104,7 +104,7 @@ function String_raw([template = Value.undefined, ...substitutions]) {
     } else {
       next = new Value('');
     }
-    const nextSub = Q(ToString(next));
+    const nextSub = Q(yield* ToString(next));
     stringElements.push(nextSub.stringValue());
     nextIndex += 1;
   }

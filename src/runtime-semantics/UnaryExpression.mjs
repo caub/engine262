@@ -44,14 +44,14 @@ function* Evaluate_UnaryExpression_Delete(UnaryExpression) {
     if (IsSuperReference(ref) === Value.true) {
       return surroundingAgent.Throw('ReferenceError');
     }
-    const baseObj = X(ToObject(GetBase(ref)));
-    const deleteStatus = Q(baseObj.Delete(GetReferencedName(ref)));
+    const baseObj = X(yield* ToObject(GetBase(ref)));
+    const deleteStatus = Q(yield* baseObj.Delete(GetReferencedName(ref)));
     if (deleteStatus === Value.false && IsStrictReference(ref) === Value.true) {
       return surroundingAgent.Throw('TypeError', msg('StrictModeDelete', GetReferencedName(ref)));
     }
     return deleteStatus;
   } else {
-    const bindings = GetBase(ref);
+    const bindings = yield* GetBase(ref);
     return Q(bindings.DeleteBinding(GetReferencedName(ref)));
   }
 }
@@ -60,7 +60,7 @@ function* Evaluate_UnaryExpression_Delete(UnaryExpression) {
 // UnaryExpression : `void` UnaryExpression
 function* Evaluate_UnaryExpression_Void(UnaryExpression) {
   const expr = yield* Evaluate(UnaryExpression);
-  Q(GetValue(expr));
+  Q(yield* GetValue(expr));
   return Value.undefined;
 }
 
@@ -73,7 +73,7 @@ function* Evaluate_UnaryExpression_Typeof(UnaryExpression) {
       return new Value('undefined');
     }
   }
-  val = Q(GetValue(val));
+  val = Q(yield* GetValue(val));
 
   // Return a String according to Table 35.
 
@@ -107,16 +107,16 @@ function* Evaluate_UnaryExpression_Typeof(UnaryExpression) {
 // UnaryExpression : `+` UnaryExpression
 function* Evaluate_UnaryExpression_Plus(UnaryExpression) {
   const expr = yield* Evaluate(UnaryExpression);
-  const exprVal = Q(GetValue(expr));
-  return Q(ToNumber(exprVal));
+  const exprVal = Q(yield* GetValue(expr));
+  return Q(yield* ToNumber(exprVal));
 }
 
 // 12.5.7.1 #sec-unary-minus-operator-runtime-semantics-evaluation
 // UnaryExpression : `-` UnaryExpression
 function* Evaluate_UnaryExpression_Minus(UnaryExpression) {
   const expr = yield* Evaluate(UnaryExpression);
-  const exprVal = Q(GetValue(expr));
-  const oldValue = Q(ToNumber(exprVal));
+  const exprVal = Q(yield* GetValue(expr));
+  const oldValue = Q(yield* ToNumber(exprVal));
   if (oldValue.isNaN()) {
     return new Value(NaN);
   }
@@ -127,8 +127,8 @@ function* Evaluate_UnaryExpression_Minus(UnaryExpression) {
 // UnaryExpression : `~` UnaryExpression
 function* Evaluate_UnaryExpression_Tilde(UnaryExpression) {
   const expr = yield* Evaluate(UnaryExpression);
-  const exprVal = Q(GetValue(expr));
-  const oldValue = Q(ToInt32(exprVal));
+  const exprVal = Q(yield* GetValue(expr));
+  const oldValue = Q(yield* ToInt32(exprVal));
   return new Value(~oldValue.numberValue()); // eslint-disable-line no-bitwise
 }
 
@@ -136,7 +136,7 @@ function* Evaluate_UnaryExpression_Tilde(UnaryExpression) {
 // UnaryExpression : `!` UnaryExpression
 function* Evaluate_UnaryExpression_Bang(UnaryExpression) {
   const expr = yield* Evaluate(UnaryExpression);
-  const oldValue = ToBoolean(Q(GetValue(expr)));
+  const oldValue = ToBoolean(Q(yield* GetValue(expr)));
   if (oldValue === Value.true) {
     return Value.false;
   }

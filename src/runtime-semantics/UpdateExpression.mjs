@@ -23,10 +23,10 @@ export function* Evaluate_UpdateExpression({
       const LeftHandSideExpression = argument;
 
       const lhs = yield* Evaluate(LeftHandSideExpression);
-      const lhsValue = Q(GetValue(lhs));
-      const oldValue = Q(ToNumber(lhsValue));
-      const newValue = EvaluateBinopValues_AdditiveExpression_Plus(oldValue, new Value(1));
-      Q(PutValue(lhs, newValue));
+      const lhsValue = Q(yield* GetValue(lhs));
+      const oldValue = Q(yield* ToNumber(lhsValue));
+      const newValue = yield* EvaluateBinopValues_AdditiveExpression_Plus(oldValue, new Value(1));
+      Q(yield* PutValue(lhs, newValue));
       return oldValue;
     }
 
@@ -35,10 +35,10 @@ export function* Evaluate_UpdateExpression({
       const LeftHandSideExpression = argument;
 
       const lhs = yield* Evaluate(LeftHandSideExpression);
-      const lhsVal = Q(GetValue(lhs));
-      const oldValue = Q(ToNumber(lhsVal));
-      const newValue = EvaluateBinopValues_AdditiveExpression_Minus(oldValue, new Value(1));
-      Q(PutValue(lhs, newValue));
+      const lhsVal = Q(yield* GetValue(lhs));
+      const oldValue = Q(yield* ToNumber(lhsVal));
+      const newValue = yield* EvaluateBinopValues_AdditiveExpression_Minus(oldValue, new Value(1));
+      Q(yield* PutValue(lhs, newValue));
       return oldValue;
     }
 
@@ -47,10 +47,10 @@ export function* Evaluate_UpdateExpression({
       const UnaryExpression = argument;
 
       const expr = yield* Evaluate(UnaryExpression);
-      const exprVal = Q(GetValue(expr));
-      const oldValue = Q(ToNumber(exprVal));
-      const newValue = EvaluateBinopValues_AdditiveExpression_Plus(oldValue, new Value(1));
-      Q(PutValue(expr, newValue));
+      const exprVal = Q(yield* GetValue(expr));
+      const oldValue = Q(yield* ToNumber(exprVal));
+      const newValue = yield* EvaluateBinopValues_AdditiveExpression_Plus(oldValue, new Value(1));
+      Q(yield* PutValue(expr, newValue));
       return newValue;
     }
 
@@ -59,10 +59,10 @@ export function* Evaluate_UpdateExpression({
       const UnaryExpression = argument;
 
       const expr = yield* Evaluate(UnaryExpression);
-      const exprVal = Q(GetValue(expr));
-      const oldValue = Q(ToNumber(exprVal));
-      const newValue = EvaluateBinopValues_AdditiveExpression_Minus(oldValue, new Value(1));
-      Q(PutValue(expr, newValue));
+      const exprVal = Q(yield* GetValue(expr));
+      const oldValue = Q(yield* ToNumber(exprVal));
+      const newValue = yield* EvaluateBinopValues_AdditiveExpression_Minus(oldValue, new Value(1));
+      Q(yield* PutValue(expr, newValue));
       return newValue;
     }
 

@@ -14,7 +14,7 @@ import { msg } from '../helpers.mjs';
 import { BootstrapPrototype } from './Bootstrap.mjs';
 
 // 24.1.4.1 #sec-get-arraybuffer.prototype.bytelength
-function ArrayBufferProto_byteLengthGetter(args, { thisValue }) {
+function* ArrayBufferProto_byteLengthGetter(args, { thisValue }) {
   const O = thisValue;
   if (Type(O) !== 'Object'
       || !('ArrayBufferData' in O)
@@ -29,7 +29,7 @@ function ArrayBufferProto_byteLengthGetter(args, { thisValue }) {
 }
 
 // 24.1.4.3 #sec-arraybuffer.prototype.slice
-function ArrayBufferProto_slice([start = Value.undefined, end = Value.undefined], { thisValue }) {
+function* ArrayBufferProto_slice([start = Value.undefined, end = Value.undefined], { thisValue }) {
   const O = thisValue;
   if (Type(O) !== 'Object'
       || !('ArrayBufferData' in O)
@@ -40,7 +40,7 @@ function ArrayBufferProto_slice([start = Value.undefined, end = Value.undefined]
     return surroundingAgent.Throw('TypeError', msg('BufferDetached'));
   }
   const len = O.ArrayBufferByteLength.numberValue();
-  const relativeStart = Q(ToInteger(start)).numberValue();
+  const relativeStart = Q(yield* ToInteger(start)).numberValue();
   let first;
   if (relativeStart < 0) {
     first = Math.max(len + relativeStart, 0);
@@ -51,7 +51,7 @@ function ArrayBufferProto_slice([start = Value.undefined, end = Value.undefined]
   if (Type(end) === 'Undefined') {
     relativeEnd = len;
   } else {
-    relativeEnd = Q(ToInteger(end)).numberValue();
+    relativeEnd = Q(yield* ToInteger(end)).numberValue();
   }
   let final;
   if (relativeEnd < 0) {
@@ -60,8 +60,8 @@ function ArrayBufferProto_slice([start = Value.undefined, end = Value.undefined]
     final = Math.min(relativeEnd, len);
   }
   const newLen = Math.max(final - first, 0);
-  const ctor = Q(SpeciesConstructor(O, surroundingAgent.intrinsic('%ArrayBuffer%')));
-  const neww = Q(Construct(ctor, [new Value(newLen)]));
+  const ctor = Q(yield* SpeciesConstructor(O, surroundingAgent.intrinsic('%ArrayBuffer%')));
+  const neww = Q(yield* Construct(ctor, [new Value(newLen)]));
   if (!('ArrayBufferData' in neww) || IsSharedArrayBuffer(neww) === Value.true) {
     return surroundingAgent.Throw('TypeError', msg('NotAnTypeObject', 'ArrayBuffer', neww));
   }
@@ -79,7 +79,7 @@ function ArrayBufferProto_slice([start = Value.undefined, end = Value.undefined]
   }
   const fromBuf = O.ArrayBufferData;
   const toBuf = neww.ArrayBufferData;
-  CopyDataBlockBytes(toBuf, new Value(0), fromBuf, new Value(first), new Value(newLen));
+  yield* CopyDataBlockBytes(toBuf, new Value(0), fromBuf, new Value(first), new Value(newLen));
   return neww;
 }
 

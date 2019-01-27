@@ -9,8 +9,8 @@ export function* Evaluate_ExpressionWithComma(ExpressionWithComma) {
   const AssignmentExpression = expressions.pop();
   for (const Expression of expressions) {
     const lref = yield* Evaluate(Expression);
-    Q(GetValue(lref));
+    Q(yield* GetValue(lref));
   }
   const rref = yield* Evaluate(AssignmentExpression);
-  return Q(GetValue(rref));
+  return Q(yield* GetValue(rref));
 }

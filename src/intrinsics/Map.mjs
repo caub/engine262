@@ -23,47 +23,47 @@ import {
 import { BootstrapConstructor } from './Bootstrap.mjs';
 import { msg } from '../helpers.mjs';
 
-export function AddEntriesFromIterable(target, iterable, adder) {
+export function* AddEntriesFromIterable(target, iterable, adder) {
   if (IsCallable(adder) === Value.false) {
     return surroundingAgent.Throw('TypeError');
   }
   Assert(iterable && Type(iterable) !== 'Undefined' && Type(iterable) !== 'Null');
-  const iteratorRecord = Q(GetIterator(iterable));
+  const iteratorRecord = Q(yield* GetIterator(iterable));
   while (true) {
-    const next = Q(IteratorStep(iteratorRecord));
+    const next = Q(yield* IteratorStep(iteratorRecord));
     if (next === Value.false) {
       return target;
     }
-    const nextItem = Q(IteratorValue(next));
+    const nextItem = Q(yield* IteratorValue(next));
     if (Type(nextItem) !== 'Object') {
       const error = new ThrowCompletion(surroundingAgent.Throw('TypeError').Value);
-      return Q(IteratorClose(iteratorRecord, error));
+      return Q(yield* IteratorClose(iteratorRecord, error));
     }
-    const k = Get(nextItem, new Value('0'));
+    const k = yield* Get(nextItem, new Value('0'));
     if (k instanceof AbruptCompletion) {
-      return Q(IteratorClose(iteratorRecord, k));
+      return Q(yield* IteratorClose(iteratorRecord, k));
     }
-    const v = Get(nextItem, new Value('1'));
+    const v = yield* Get(nextItem, new Value('1'));
     if (v instanceof AbruptCompletion) {
-      return Q(IteratorClose(iteratorRecord, v));
+      return Q(yield* IteratorClose(iteratorRecord, v));
     }
-    const status = Call(adder, target, [k.Value, v.Value]);
+    const status = yield* Call(adder, target, [k.Value, v.Value]);
     if (status instanceof AbruptCompletion) {
-      return Q(IteratorClose(iteratorRecord, status));
+      return Q(yield* IteratorClose(iteratorRecord, status));
     }
   }
 }
 
-function MapConstructor([iterable], { NewTarget }) {
+function* MapConstructor([iterable], { NewTarget }) {
   if (Type(NewTarget) === 'Undefined') {
     return surroundingAgent.Throw('TypeError', msg('NotAConstructor', NewTarget));
   }
-  const map = Q(OrdinaryCreateFromConstructor(NewTarget, '%MapPrototype%', ['MapData']));
+  const map = Q(yield* OrdinaryCreateFromConstructor(NewTarget, '%MapPrototype%', ['MapData']));
   map.MapData = [];
   if (iterable === undefined || Type(iterable) === 'Undefined' || Type(iterable) === 'Null') {
     return map;
   }
-  const adder = Q(Get(map, new Value('set')));
+  const adder = Q(yield* Get(map, new Value('set')));
   return Q(AddEntriesFromIterable(map, iterable, adder));
 }
 

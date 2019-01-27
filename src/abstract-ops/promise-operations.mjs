@@ -52,16 +52,16 @@ export class PromiseReactionRecord {
 }
 
 // 25.6.1.3 #sec-createresolvingfunctions
-export function CreateResolvingFunctions(promise) {
+export function* CreateResolvingFunctions(promise) {
   const alreadyResolved = { Value: false };
   const stepsResolve = PromiseResolveFunctions;
   const resolve = CreateBuiltinFunction(stepsResolve, ['Promise', 'AlreadyResolved']);
-  SetFunctionLength(resolve, new Value(1));
+  yield* SetFunctionLength(resolve, new Value(1));
   resolve.Promise = promise;
   resolve.AlreadyResolved = alreadyResolved;
   const stepsReject = PromiseRejectFunctions;
   const reject = CreateBuiltinFunction(stepsReject, ['Promise', 'AlreadyResolved']);
-  SetFunctionLength(reject, new Value(1));
+  yield* SetFunctionLength(reject, new Value(1));
   reject.Promise = promise;
   reject.AlreadyResolved = alreadyResolved;
   return {
@@ -71,7 +71,7 @@ export function CreateResolvingFunctions(promise) {
 }
 
 // 25.6.1.3.1 #sec-promise-reject-functions
-function PromiseRejectFunctions([reason = Value.undefined]) {
+function* PromiseRejectFunctions([reason = Value.undefined]) {
   const F = this;
 
   Assert('Promise' in F && Type(F.Promise) === 'Object');
@@ -85,7 +85,7 @@ function PromiseRejectFunctions([reason = Value.undefined]) {
 }
 
 // 25.6.1.3.2 #sec-promise-resolve-functions
-function PromiseResolveFunctions([resolution = Value.undefined]) {
+function* PromiseResolveFunctions([resolution = Value.undefined]) {
   const F = this;
 
   Assert('Promise' in F && Type(F.Promise) === 'Object');
@@ -103,7 +103,7 @@ function PromiseResolveFunctions([resolution = Value.undefined]) {
     return FulfillPromise(promise, resolution);
   }
 
-  const then = Get(resolution, new Value('then'));
+  const then = yield* Get(resolution, new Value('then'));
   if (then instanceof AbruptCompletion) {
     return RejectPromise(promise, then.Value);
   }
@@ -127,16 +127,16 @@ function FulfillPromise(promise, value) {
 }
 
 // 25.6.1.5 #sec-newpromisecapability
-export function NewPromiseCapability(C) {
+export function* NewPromiseCapability(C) {
   if (IsConstructor(C) === Value.false) {
     return surroundingAgent.Throw('TypeError', msg('NotAConstructor', C));
   }
   const promiseCapability = new PromiseCapabilityRecord();
   const steps = GetCapabilitiesExecutorFunctions;
   const executor = CreateBuiltinFunction(steps, ['Capability']);
-  SetFunctionLength(executor, new Value(2));
+  yield* SetFunctionLength(executor, new Value(2));
   executor.Capability = promiseCapability;
-  const promise = Q(Construct(C, [executor]));
+  const promise = Q(yield* Construct(C, [executor]));
   if (IsCallable(promiseCapability.Resolve) === Value.false) {
     return surroundingAgent.Throw('TypeError', msg('PromiseResolveFunction', promiseCapability.Resolve));
   }
@@ -148,7 +148,7 @@ export function NewPromiseCapability(C) {
 }
 
 // 25.6.1.5.1 #sec-getcapabilitiesexecutor-functions
-function GetCapabilitiesExecutorFunctions([resolve = Value.undefined, reject = Value.undefined]) {
+function* GetCapabilitiesExecutorFunctions([resolve = Value.undefined, reject = Value.undefined]) {
   const F = this;
 
   const promiseCapability = F.Capability;
@@ -186,7 +186,7 @@ function TriggerPromiseReactions(reactions, argument) {
 }
 
 // 25.6.2.1 #sec-promisereactionjob
-export function PromiseReactionJob(reaction, argument) {
+export function* PromiseReactionJob(reaction, argument) {
   Assert(reaction instanceof PromiseReactionRecord);
   const promiseCapability = reaction.Capability;
   const type = reaction.Type;
@@ -200,7 +200,7 @@ export function PromiseReactionJob(reaction, argument) {
       handlerResult = new ThrowCompletion(argument);
     }
   } else {
-    handlerResult = Call(handler, Value.undefined, [argument]);
+    handlerResult = yield* Call(handler, Value.undefined, [argument]);
   }
   if (promiseCapability === Value.undefined) {
     Assert(!(handlerResult instanceof AbruptCompletion));
@@ -208,42 +208,46 @@ export function PromiseReactionJob(reaction, argument) {
   }
   let status;
   if (handlerResult instanceof AbruptCompletion) {
-    status = Call(promiseCapability.Reject, Value.undefined, [handlerResult.Value]);
+    status = yield* Call(promiseCapability.Reject, Value.undefined, [handlerResult.Value]);
   } else {
-    status = Call(promiseCapability.Resolve, Value.undefined, [EnsureCompletion(handlerResult).Value]);
+    status = yield* Call(
+      promiseCapability.Resolve,
+      Value.undefined,
+      [EnsureCompletion(handlerResult).Value],
+    );
   }
   return status;
 }
 
 // 25.6.2.2 #sec-promiseresolvethenablejob
-function PromiseResolveThenableJob(promiseToResolve, thenable, then) {
-  const resolvingFunctions = CreateResolvingFunctions(promiseToResolve);
-  const thenCallResult = Call(then, thenable, [
+function* PromiseResolveThenableJob(promiseToResolve, thenable, then) {
+  const resolvingFunctions = yield* CreateResolvingFunctions(promiseToResolve);
+  const thenCallResult = yield* Call(then, thenable, [
     resolvingFunctions.Resolve, resolvingFunctions.Reject,
   ]);
   if (thenCallResult instanceof AbruptCompletion) {
-    const status = Call(resolvingFunctions.Reject, Value.undefined, [thenCallResult.Value]);
+    const status = yield* Call(resolvingFunctions.Reject, Value.undefined, [thenCallResult.Value]);
     return status;
   }
   return thenCallResult;
 }
 
 // 25.6.4.5.1 #sec-promise-resolve
-export function PromiseResolve(C, x) {
+export function* PromiseResolve(C, x) {
   Assert(Type(C) === 'Object');
   if (IsPromise(x) === Value.true) {
-    const xConstructor = Q(Get(x, new Value('constructor')));
+    const xConstructor = Q(yield* Get(x, new Value('constructor')));
     if (SameValue(xConstructor, C) === Value.true) {
       return x;
     }
   }
-  const promiseCapability = Q(NewPromiseCapability(C));
-  Q(Call(promiseCapability.Resolve, Value.undefined, [x]));
+  const promiseCapability = Q(yield* NewPromiseCapability(C));
+  Q(yield* Call(promiseCapability.Resolve, Value.undefined, [x]));
   return promiseCapability.Promise;
 }
 
 // 25.6.5.4.1 #sec-performpromisethen
-export function PerformPromiseThen(promise, onFulfilled, onRejected, resultCapability) {
+export function* PerformPromiseThen(promise, onFulfilled, onRejected, resultCapability) {
   Assert(IsPromise(promise) === Value.true);
   if (resultCapability) {
     Assert(resultCapability instanceof PromiseCapabilityRecord);

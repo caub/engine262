@@ -31,7 +31,7 @@ import {
 import { msg } from '../helpers.mjs';
 
 // 15.2.1.16.4.1 #sec-innermoduleinstantiation
-export function InnerModuleInstantiation(module, stack, index) {
+export function* InnerModuleInstantiation(module, stack, index) {
   if (!(module instanceof SourceTextModuleRecord)) {
     Q(module.Instantiate());
     return index;
@@ -47,7 +47,7 @@ export function InnerModuleInstantiation(module, stack, index) {
   stack.push(module);
   for (const required of module.RequestedModules) {
     const requiredModule = Q(HostResolveImportedModule(module, required));
-    index = Q(InnerModuleInstantiation(requiredModule, stack, index));
+    index = Q(yield* InnerModuleInstantiation(requiredModule, stack, index));
     Assert(requiredModule.Status === 'instantiating' || requiredModule.Status === 'instantiated' || requiredModule.Status === 'evaluated');
     if (stack.includes(requiredModule)) {
       Assert(requiredModule.Status === 'instantiating');
@@ -57,7 +57,7 @@ export function InnerModuleInstantiation(module, stack, index) {
       module.DFSAncestorIndex = Math.min(module.DFSAncestorIndex, requiredModule.DFSAncestorIndex);
     }
   }
-  Q(ModuleDeclarationEnvironmentSetup(module));
+  Q(yield* ModuleDeclarationEnvironmentSetup(module));
   Assert(stack.indexOf(module) === stack.lastIndexOf(module));
   Assert(module.DFSAncestorIndex <= module.DFSIndex);
   if (module.DFSAncestorIndex === module.DFSIndex) {
@@ -74,7 +74,7 @@ export function InnerModuleInstantiation(module, stack, index) {
 }
 
 // 15.2.1.16.4.2 #sec-moduledeclarationenvironmentsetup
-export function ModuleDeclarationEnvironmentSetup(module) {
+export function* ModuleDeclarationEnvironmentSetup(module) {
   for (const e of module.IndirectExportEntries) {
     const resolution = Q(module.ResolveExport(e.ExportName, []));
     if (resolution === null || resolution === 'ambiguous') {
@@ -91,7 +91,7 @@ export function ModuleDeclarationEnvironmentSetup(module) {
   for (const ie of module.ImportEntries) {
     const importedModule = X(HostResolveImportedModule(module, ie.ModuleRequest));
     if (ie.ImportName === new Value('*')) {
-      const namespace = Q(GetModuleNamespace(importedModule));
+      const namespace = Q(yield* GetModuleNamespace(importedModule));
       X(envRec.CreateImmutableBinding(ie.LocalName, Value.true));
       envRec.InitializeBinding(ie.LocalName, namespace);
     } else {
@@ -133,7 +133,7 @@ export function ModuleDeclarationEnvironmentSetup(module) {
 }
 
 // 15.2.1.18 #sec-getmodulenamespace
-export function GetModuleNamespace(module) {
+export function* GetModuleNamespace(module) {
   Assert(module instanceof ModuleRecord);
   Assert(module.Status !== 'uninstantiated');
   let namespace = module.Namespace;
@@ -146,13 +146,13 @@ export function GetModuleNamespace(module) {
         unambiguousNames.push(name);
       }
     }
-    namespace = ModuleNamespaceCreate(module, unambiguousNames);
+    namespace = yield* ModuleNamespaceCreate(module, unambiguousNames);
   }
   return namespace;
 }
 
 // 15.2.1.16.5.1 #sec-innermoduleevaluation
-export function InnerModuleEvaluation(module, stack, index) {
+export function* InnerModuleEvaluation(module, stack, index) {
   if (!(module instanceof SourceTextModuleRecord)) {
     Q(module.Evaluate());
     return index;
@@ -175,7 +175,7 @@ export function InnerModuleEvaluation(module, stack, index) {
   stack.push(module);
   for (const required of module.RequestedModules) {
     const requiredModule = X(HostResolveImportedModule(module, required));
-    index = Q(InnerModuleEvaluation(requiredModule, stack, index));
+    index = Q(yield* InnerModuleEvaluation(requiredModule, stack, index));
     Assert(requiredModule.Status === 'evaluating' || requiredModule.Status === 'evaluated');
     if (stack.includes(requiredModule)) {
       Assert(requiredModule.Status === 'evaluating');
@@ -185,7 +185,7 @@ export function InnerModuleEvaluation(module, stack, index) {
       module.DFSAncestorIndex = Math.min(module.DFSAncestorIndex, requiredModule.DFSAncestorIndex);
     }
   }
-  Q(ModuleExecution(module));
+  Q(yield* ModuleExecution(module));
   Assert(stack.indexOf(module) === stack.lastIndexOf(module));
   Assert(module.DFSAncestorIndex <= module.DFSIndex);
   if (module.DFSAncestorIndex === module.DFSIndex) {

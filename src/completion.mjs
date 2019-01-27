@@ -22,6 +22,12 @@ export function Completion(type, value, target) {
   return type;
 }
 
+function __DELETE_ME__(v) {
+  if (v && v.next && v.return) {
+    throw new Error('HECK YOU');
+  }
+}
+
 // 6.2.3.2 #sec-normalcompletion
 export class NormalCompletion {
   constructor(value) {
@@ -35,6 +41,7 @@ export class NormalCompletion {
 
 export class AbruptCompletion {
   static [Symbol.hasInstance](v) {
+    __DELETE_ME__(v);
     return v instanceof Completion && v.Type !== 'normal';
   }
 }
@@ -116,6 +123,7 @@ export function IfAbruptRejectPromise() {
 }
 
 export function EnsureCompletion(val) {
+  __DELETE_ME__(val);
   if (val instanceof Completion) {
     return val;
   }
@@ -149,16 +157,16 @@ function AwaitRejectedFunctions([reason]) {
 
 export function* Await(value) {
   const asyncContext = surroundingAgent.runningExecutionContext;
-  const promise = Q(PromiseResolve(surroundingAgent.intrinsic('%Promise%'), value));
+  const promise = Q(yield* PromiseResolve(surroundingAgent.intrinsic('%Promise%'), value));
   const stepsFulfilled = AwaitFulfilledFunctions;
   const onFulfilled = CreateBuiltinFunction(stepsFulfilled, ['AsyncContext']);
-  X(SetFunctionLength(onFulfilled, new Value(1)));
+  X(yield* SetFunctionLength(onFulfilled, new Value(1)));
   onFulfilled.AsyncContext = asyncContext;
   const stepsRejected = AwaitRejectedFunctions;
   const onRejected = CreateBuiltinFunction(stepsRejected, ['AsyncContext']);
-  X(SetFunctionLength(onRejected, new Value(1)));
+  X(yield* SetFunctionLength(onRejected, new Value(1)));
   onRejected.AsyncContext = asyncContext;
-  X(PerformPromiseThen(promise, onFulfilled, onRejected));
+  X(yield* PerformPromiseThen(promise, onFulfilled, onRejected));
   surroundingAgent.executionContextStack.pop(asyncContext);
   const completion = yield Value.undefined;
   return completion;

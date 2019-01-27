@@ -22,9 +22,9 @@ function thisNumberValue(value) {
 }
 
 // 20.1.3.2 #sec-number.prototype.toexponential
-function NumberProto_toExponential([fractionDigits = Value.undefined], { thisValue }) {
+function* NumberProto_toExponential([fractionDigits = Value.undefined], { thisValue }) {
   let x = Q(thisNumberValue(thisValue)).numberValue();
-  const f = Q(ToInteger(fractionDigits)).numberValue();
+  const f = Q(yield* ToInteger(fractionDigits)).numberValue();
   Assert(fractionDigits !== Value.undefined || f === 0);
   if (Number.isNaN(x)) {
     return new Value('NaN');
@@ -79,9 +79,9 @@ function NumberProto_toExponential([fractionDigits = Value.undefined], { thisVal
 }
 
 // 20.1.3.3 #sec-number.prototype.tofixed
-function NumberProto_toFixed([fractionDigits = Value.undefined], { thisValue }) {
+function* NumberProto_toFixed([fractionDigits = Value.undefined], { thisValue }) {
   let x = Q(thisNumberValue(thisValue)).numberValue();
-  const f = Q(ToInteger(fractionDigits)).numberValue();
+  const f = Q(yield* ToInteger(fractionDigits)).numberValue();
   Assert(fractionDigits !== Value.undefined || f === 0);
   if (f < 0 || f > 100) {
     return surroundingAgent.Throw('RangeError', 'Number.prototype.toFixed argument must be between 0 and 100');
@@ -96,7 +96,7 @@ function NumberProto_toFixed([fractionDigits = Value.undefined], { thisValue }) 
   }
   let m;
   if (x >= 10 ** 21) {
-    m = X(ToString(new Value(x))).stringValue();
+    m = X(yield* ToString(new Value(x))).stringValue();
   } else {
     // TODO: compute n.
     // if (n === 0) {
@@ -121,17 +121,17 @@ function NumberProto_toFixed([fractionDigits = Value.undefined], { thisValue }) 
 }
 
 // 20.1.3.4 #sec-number.prototype.tolocalestring
-function NumberProto_toLocaleString() {
+function* NumberProto_toLocaleString() {
   return surroundingAgent.Throw('Error', 'Number.prototype.toLocaleString is not implemented');
 }
 
 // 20.1.3.5 #sec-number.prototype.toprecision
-function NumberProto_toPrecision([precision = Value.undefined], { thisValue }) {
+function* NumberProto_toPrecision([precision = Value.undefined], { thisValue }) {
   let x = Q(thisNumberValue(thisValue)).numberValue();
   if (precision === Value.undefined) {
-    return X(ToString(new Value(x)));
+    return X(yield* ToString(new Value(x)));
   }
-  const p = Q(ToInteger(precision)).numberValue();
+  const p = Q(yield* ToInteger(precision)).numberValue();
   if (Number.isNaN(x)) {
     return new Value('NaN');
   }
@@ -185,20 +185,20 @@ function NumberProto_toPrecision([precision = Value.undefined], { thisValue }) {
 }
 
 // 20.1.3.6 #sec-number.prototype.tostring
-function NumberProto_toString(args, { thisValue }) {
+function* NumberProto_toString(args, { thisValue }) {
   const [radix] = args;
   const x = Q(thisNumberValue(thisValue));
   let radixNumber;
   if (args.length === 0 || Type(radix) === 'Undefined') {
     radixNumber = 10;
   } else {
-    radixNumber = Q(ToInteger(radix)).numberValue();
+    radixNumber = Q(yield* ToInteger(radix)).numberValue();
   }
   if (radixNumber < 2 || radixNumber > 36) {
     return surroundingAgent.Throw('TypeError');
   }
   if (radixNumber === 10) {
-    return X(ToString(x));
+    return X(yield* ToString(x));
   }
   // FIXME(devsnek): Return the String representation of this Number
   // value using the radix specified by radixNumber. Letters a-z are
@@ -209,7 +209,7 @@ function NumberProto_toString(args, { thisValue }) {
 }
 
 // 20.1.3.7 #sec-number.prototype.valueof
-function NumberProto_valueOf(args, { thisValue }) {
+function* NumberProto_valueOf(args, { thisValue }) {
   return Q(thisNumberValue(thisValue));
 }
 

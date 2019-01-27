@@ -11,7 +11,7 @@ import {
 import { Q } from '../completion.mjs';
 
 // 21.1.3.16.1 #sec-getsubstitution
-export function GetSubstitution(matched, str, position, captures, namedCaptures, replacement) {
+export function* GetSubstitution(matched, str, position, captures, namedCaptures, replacement) {
   Assert(Type(matched) === 'String');
   const matchLength = matched.stringValue().length;
   Assert(Type(str) === 'String');
@@ -23,7 +23,7 @@ export function GetSubstitution(matched, str, position, captures, namedCaptures,
   const tailPos = position.numberValue() + matchLength;
   const m = captures.length;
   if (namedCaptures !== Value.undefined) {
-    namedCaptures = Q(ToObject(namedCaptures));
+    namedCaptures = Q(yield* ToObject(namedCaptures));
   }
   const replacementStr = replacement.stringValue();
   let result = '';
@@ -86,11 +86,11 @@ export function GetSubstitution(matched, str, position, captures, namedCaptures,
             i += 2;
           } else {
             const groupName = new Value(replacementStr.substring(i + 1, nextSign));
-            const capture = Q(Get(namedCaptures, groupName));
+            const capture = Q(yield* Get(namedCaptures, groupName));
             if (capture === Value.undefined) {
               // Replace the text with the empty string
             } else {
-              result += Q(ToString(capture)).stringValue();
+              result += Q(yield* ToString(capture)).stringValue();
             }
             i = nextSign + 1;
           }

@@ -16,16 +16,16 @@ import {
 } from '../value.mjs';
 import { OutOfRange } from '../helpers.mjs';
 
-export function EvaluateBinopValues_AdditiveExpression_Plus(lval, rval) {
-  const lprim = Q(ToPrimitive(lval));
-  const rprim = Q(ToPrimitive(rval));
+export function* EvaluateBinopValues_AdditiveExpression_Plus(lval, rval) {
+  const lprim = Q(yield* ToPrimitive(lval));
+  const rprim = Q(yield* ToPrimitive(rval));
   if (Type(lprim) === 'String' || Type(rprim) === 'String') {
-    const lstr = Q(ToString(lprim));
-    const rstr = Q(ToString(rprim));
+    const lstr = Q(yield* ToString(lprim));
+    const rstr = Q(yield* ToString(rprim));
     return new Value(lstr.stringValue() + rstr.stringValue());
   }
-  const lnum = Q(ToNumber(lprim));
-  const rnum = Q(ToNumber(rprim));
+  const lnum = Q(yield* ToNumber(lprim));
+  const rnum = Q(yield* ToNumber(rprim));
   return new Value(lnum.numberValue() + rnum.numberValue());
 }
 
@@ -33,15 +33,15 @@ export function EvaluateBinopValues_AdditiveExpression_Plus(lval, rval) {
 //  AdditiveExpression : AdditiveExpression + MultiplicativeExpression
 function* Evaluate_AdditiveExpression_Plus(AdditiveExpression, MultiplicativeExpression) {
   const lref = yield* Evaluate(AdditiveExpression);
-  const lval = Q(GetValue(lref));
+  const lval = Q(yield* GetValue(lref));
   const rref = yield* Evaluate(MultiplicativeExpression);
-  const rval = Q(GetValue(rref));
-  return EvaluateBinopValues_AdditiveExpression_Plus(lval, rval);
+  const rval = Q(yield* GetValue(rref));
+  return yield* EvaluateBinopValues_AdditiveExpression_Plus(lval, rval);
 }
 
-export function EvaluateBinopValues_AdditiveExpression_Minus(lval, rval) {
-  const lnum = Q(ToNumber(lval));
-  const rnum = Q(ToNumber(rval));
+export function* EvaluateBinopValues_AdditiveExpression_Minus(lval, rval) {
+  const lnum = Q(yield* ToNumber(lval));
+  const rnum = Q(yield* ToNumber(rval));
   return new Value(lnum.numberValue() - rnum.numberValue());
 }
 
@@ -50,10 +50,10 @@ function* Evaluate_AdditiveExpression_Minus(
   AdditiveExpression, MultiplicativeExpression,
 ) {
   const lref = yield* Evaluate(AdditiveExpression);
-  const lval = Q(GetValue(lref));
+  const lval = Q(yield* GetValue(lref));
   const rref = yield* Evaluate(MultiplicativeExpression);
-  const rval = Q(GetValue(rref));
-  return EvaluateBinopValues_AdditiveExpression_Minus(lval, rval);
+  const rval = Q(yield* GetValue(rref));
+  return yield* EvaluateBinopValues_AdditiveExpression_Minus(lval, rval);
 }
 
 export function* Evaluate_AdditiveExpression(AdditiveExpression) {

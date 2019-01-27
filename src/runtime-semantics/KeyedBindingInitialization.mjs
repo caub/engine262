@@ -54,10 +54,10 @@ export function* KeyedBindingInitialization_BindingElement(BindingElement, value
       throw new OutOfRange('KeyedBindingInitialization_BindingElement', BindingElement);
   }
 
-  let v = Q(GetV(value, propertyName));
+  let v = Q(yield* GetV(value, propertyName));
   if (Initializer !== undefined && Type(v) === 'Undefined') {
     const defaultValue = yield* Evaluate(Initializer);
-    v = Q(GetValue(defaultValue));
+    v = Q(yield* GetValue(defaultValue));
   }
   return yield* BindingInitialization_BindingPattern(BindingPattern, v, environment);
 }
@@ -81,20 +81,20 @@ export function* KeyedBindingInitialization_SingleNameBinding(SingleNameBinding,
   }
 
   const bindingId = new Value(BindingIdentifier.name);
-  const lhs = Q(ResolveBinding(bindingId, environment, BindingIdentifier.strict));
-  let v = Q(GetV(value, propertyName));
+  const lhs = Q(yield* ResolveBinding(bindingId, environment, BindingIdentifier.strict));
+  let v = Q(yield* GetV(value, propertyName));
   if (Initializer !== undefined && Type(v) === 'Undefined') {
     const defaultValue = yield* Evaluate(Initializer);
-    v = Q(GetValue(defaultValue));
+    v = Q(yield* GetValue(defaultValue));
     if (IsAnonymousFunctionDefinition(Initializer)) {
-      const hasNameProperty = Q(HasOwnProperty(v, new Value('name')));
+      const hasNameProperty = Q(yield* HasOwnProperty(v, new Value('name')));
       if (hasNameProperty === Value.false) {
-        X(SetFunctionName(v, bindingId));
+        X(yield* SetFunctionName(v, bindingId));
       }
     }
   }
   if (Type(environment) === 'Undefined') {
-    return Q(PutValue(lhs, v));
+    return Q(yield* PutValue(lhs, v));
   }
-  return InitializeReferencedBinding(lhs, v);
+  return yield* InitializeReferencedBinding(lhs, v);
 }

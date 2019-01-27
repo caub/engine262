@@ -13,23 +13,23 @@ import { surroundingAgent } from '../engine.mjs';
 import { BootstrapConstructor } from './Bootstrap.mjs';
 import { captureStack } from '../helpers.mjs';
 
-function ErrorConstructor([message = Value.undefined], { NewTarget }) {
+function* ErrorConstructor([message = Value.undefined], { NewTarget }) {
   let newTarget;
   if (Type(NewTarget) === 'Undefined') {
     newTarget = surroundingAgent.activeFunctionObject;
   } else {
     newTarget = NewTarget;
   }
-  const O = Q(OrdinaryCreateFromConstructor(newTarget, '%ErrorPrototype%', ['ErrorData']));
+  const O = Q(yield* OrdinaryCreateFromConstructor(newTarget, '%ErrorPrototype%', ['ErrorData']));
   if (Type(message) !== 'Undefined') {
-    const msg = Q(ToString(message));
+    const msg = Q(yield* ToString(message));
     const msgDesc = Descriptor({
       Value: msg,
       Writable: Value.true,
       Enumerable: Value.false,
       Configurable: Value.true,
     });
-    X(DefinePropertyOrThrow(O, new Value('message'), msgDesc));
+    X(yield* DefinePropertyOrThrow(O, new Value('message'), msgDesc));
   }
 
   X(captureStack(O)); // non-spec

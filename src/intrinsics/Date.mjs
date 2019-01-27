@@ -19,7 +19,7 @@ import {
   Q, X,
 } from '../completion.mjs';
 
-function DateConstructor(args, { NewTarget }) {
+function* DateConstructor(args, { NewTarget }) {
   const numberOfArgs = args.length;
   if (numberOfArgs >= 2) {
     // 20.3.2.1 #sec-date-year-month-date-hours-minutes-seconds-ms
@@ -29,35 +29,35 @@ function DateConstructor(args, { NewTarget }) {
       const now = Date.now();
       return ToDateString(new Value(now));
     } else {
-      const y = Q(ToNumber(year));
-      const m = Q(ToNumber(month));
+      const y = Q(yield* ToNumber(year));
+      const m = Q(yield* ToNumber(month));
       let dt;
       if (date !== undefined) {
-        dt = Q(ToNumber(date));
+        dt = Q(yield* ToNumber(date));
       } else {
         dt = new Value(1);
       }
       let h;
       if (hours !== undefined) {
-        h = Q(ToNumber(hours));
+        h = Q(yield* ToNumber(hours));
       } else {
         h = new Value(0);
       }
       let min;
       if (minutes !== undefined) {
-        min = Q(ToNumber(minutes));
+        min = Q(yield* ToNumber(minutes));
       } else {
         min = new Value(0);
       }
       let s;
       if (seconds !== undefined) {
-        s = Q(ToNumber(seconds));
+        s = Q(yield* ToNumber(seconds));
       } else {
         s = new Value(0);
       }
       let milli;
       if (ms !== undefined) {
-        milli = Q(ToNumber(ms));
+        milli = Q(yield* ToNumber(ms));
       } else {
         milli = new Value(0);
       }
@@ -65,16 +65,16 @@ function DateConstructor(args, { NewTarget }) {
       if (y.isNaN()) {
         yr = new Value(NaN);
       } else {
-        const yi = X(ToInteger(y)).numberValue();
+        const yi = X(yield* ToInteger(y)).numberValue();
         if (yi >= 0 && yi <= 99) {
           yr = new Value(1900 + yi);
         } else {
           yr = y;
         }
       }
-      const finalDate = MakeDate(MakeDay(yr, m, dt), MakeTime(h, min, s, milli));
-      const O = Q(OrdinaryCreateFromConstructor(NewTarget, '%DatePrototype%', ['DateValue']));
-      O.DateValue = TimeClip(UTC(finalDate));
+      const finalDate = MakeDate(yield* MakeDay(yr, m, dt), yield* MakeTime(h, min, s, milli));
+      const O = Q(yield* OrdinaryCreateFromConstructor(NewTarget, '%DatePrototype%', ['DateValue']));
+      O.DateValue = yield* TimeClip(UTC(finalDate));
       return O;
     }
   } else if (numberOfArgs === 1) {
@@ -89,15 +89,15 @@ function DateConstructor(args, { NewTarget }) {
       if (Type(value) === 'Object' && 'DateValue' in value) {
         tv = thisTimeValue(value);
       } else {
-        const v = Q(ToPrimitive(value));
+        const v = Q(yield* ToPrimitive(value));
         if (Type(v) === 'String') {
           tv = parseDate(v);
         } else {
-          tv = Q(ToNumber(v));
+          tv = Q(yield* ToNumber(v));
         }
       }
-      const O = Q(OrdinaryCreateFromConstructor(NewTarget, '%DatePrototype%', ['DateValue']));
-      O.DateValue = TimeClip(tv);
+      const O = Q(yield* OrdinaryCreateFromConstructor(NewTarget, '%DatePrototype%', ['DateValue']));
+      O.DateValue = yield* TimeClip(tv);
       return O;
     }
   } else {
@@ -107,7 +107,7 @@ function DateConstructor(args, { NewTarget }) {
       const now = Date.now();
       return ToDateString(new Value(now));
     } else {
-      const O = Q(OrdinaryCreateFromConstructor(NewTarget, '%DatePrototype%', ['DateValue']));
+      const O = Q(yield* OrdinaryCreateFromConstructor(NewTarget, '%DatePrototype%', ['DateValue']));
       O.DateValue = new Value(Date.now());
       return O;
     }
@@ -121,8 +121,8 @@ function Date_now() {
 }
 
 // 20.3.3.2 #sec-date.parse
-function Date_parse([string = Value.undefined]) {
-  const str = ToString(string);
+function* Date_parse([string = Value.undefined]) {
+  const str = yield* ToString(string);
   if (str instanceof AbruptCompletion) {
     return str;
   }
@@ -130,41 +130,41 @@ function Date_parse([string = Value.undefined]) {
 }
 
 // 20.3.3.4 #sec-date.utc
-function Date_UTC([year = Value.undefined, month, date, hours, minutes, seconds, ms]) {
-  const y = Q(ToNumber(year));
+function* Date_UTC([year = Value.undefined, month, date, hours, minutes, seconds, ms]) {
+  const y = Q(yield* ToNumber(year));
   let m;
   if (month !== undefined) {
-    m = Q(ToNumber(month));
+    m = Q(yield* ToNumber(month));
   } else {
     m = new Value(0);
   }
   let dt;
   if (date !== undefined) {
-    dt = Q(ToNumber(date));
+    dt = Q(yield* ToNumber(date));
   } else {
     dt = new Value(1);
   }
   let h;
   if (hours !== undefined) {
-    h = Q(ToNumber(hours));
+    h = Q(yield* ToNumber(hours));
   } else {
     h = new Value(0);
   }
   let min;
   if (minutes !== undefined) {
-    min = Q(ToNumber(minutes));
+    min = Q(yield* ToNumber(minutes));
   } else {
     min = new Value(0);
   }
   let s;
   if (seconds !== undefined) {
-    s = Q(ToNumber(seconds));
+    s = Q(yield* ToNumber(seconds));
   } else {
     s = new Value(0);
   }
   let milli;
   if (ms !== undefined) {
-    milli = Q(ToNumber(ms));
+    milli = Q(yield* ToNumber(ms));
   } else {
     milli = new Value(0);
   }
@@ -173,7 +173,7 @@ function Date_UTC([year = Value.undefined, month, date, hours, minutes, seconds,
   if (y.isNaN()) {
     yr = new Value(NaN);
   } else {
-    const yi = X(ToInteger(y)).numberValue();
+    const yi = X(yield* ToInteger(y)).numberValue();
     if (yi >= 0 && yi <= 99) {
       yr = new Value(1900 + yi);
     } else {
@@ -181,7 +181,9 @@ function Date_UTC([year = Value.undefined, month, date, hours, minutes, seconds,
     }
   }
 
-  return TimeClip(MakeDate(MakeDay(yr, m, dt), MakeTime(h, min, s, milli)));
+  return yield* TimeClip(
+    yield* MakeDate(yield* MakeDay(yr, m, dt), yield* MakeTime(h, min, s, milli)),
+  );
 }
 
 function parseDate(dateTimeString) {

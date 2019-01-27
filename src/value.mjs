@@ -229,32 +229,32 @@ export class ObjectValue extends Value {
 }
 
 export class ArrayExoticObjectValue extends ObjectValue {
-  DefineOwnProperty(P, Desc) {
+  * DefineOwnProperty(P, Desc) {
     const A = this;
 
     Assert(IsPropertyKey(P));
     if (Type(P) === 'String' && P.stringValue() === 'length') {
-      return Q(ArraySetLength(A, Desc));
-    } else if (isArrayIndex(P)) {
-      const oldLenDesc = OrdinaryGetOwnProperty(A, new Value('length'));
+      return Q(yield* ArraySetLength(A, Desc));
+    } else if (yield* isArrayIndex(P)) {
+      const oldLenDesc = yield* OrdinaryGetOwnProperty(A, new Value('length'));
       Assert(Type(oldLenDesc) !== 'Undefined' && !IsAccessorDescriptor(oldLenDesc));
       const oldLen = oldLenDesc.Value;
-      const index = X(ToUint32(P));
+      const index = X(yield* ToUint32(P));
       if (index.numberValue() >= oldLen.numberValue() && oldLenDesc.Writable === Value.false) {
         return Value.false;
       }
-      const succeeded = X(OrdinaryDefineOwnProperty(A, P, Desc));
+      const succeeded = X(yield* OrdinaryDefineOwnProperty(A, P, Desc));
       if (succeeded === Value.false) {
         return Value.false;
       }
       if (index.numberValue() >= oldLen.numberValue()) {
         oldLenDesc.Value = new Value(index.numberValue() + 1);
-        const succeeded = OrdinaryDefineOwnProperty(A, new Value('length'), oldLenDesc); // eslint-disable-line no-shadow
+        const succeeded = yield* OrdinaryDefineOwnProperty(A, new Value('length'), oldLenDesc); // eslint-disable-line no-shadow
         Assert(succeeded === Value.true);
       }
       return Value.true;
     }
-    return OrdinaryDefineOwnProperty(A, P, Desc);
+    return yield* OrdinaryDefineOwnProperty(A, P, Desc);
   }
 }
 
@@ -265,10 +265,15 @@ export class FunctionValue extends ObjectValue {
 }
 
 function nativeCall(F, argumentsList, thisArgument, newTarget) {
-  return F.nativeFunction(argumentsList, {
+  const r = F.nativeFunction(argumentsList, {
     thisValue: thisArgument || Value.undefined,
     NewTarget: newTarget || Value.undefined,
   });
+  if (!r.next) {
+    console.log(F.nativeFunction);
+    throw new TypeError();
+  }
+  return r;
 }
 
 export class BuiltinFunctionValue extends FunctionValue {
@@ -279,7 +284,7 @@ export class BuiltinFunctionValue extends FunctionValue {
     this.ScriptOrModule = undefined;
 
     if (isConstructor === Value.true) {
-      this.Construct = function Construct(argumentsList, newTarget) {
+      this.Construct = function* Construct(argumentsList, newTarget) {
         const F = this;
 
         // const callerContext = surroundingAgent.runningExecutionContext;
@@ -291,7 +296,7 @@ export class BuiltinFunctionValue extends FunctionValue {
         calleeContext.ScriptOrModule = F.ScriptOrModule;
         // 8. Perform any necessary implementation-defined initialization of calleeContext.
         surroundingAgent.executionContextStack.push(calleeContext);
-        const result = nativeCall(F, argumentsList, undefined, newTarget);
+        const result = yield* nativeCall(F, argumentsList, undefined, newTarget);
         // Remove calleeContext from the execution context stack and
         // restore callerContext as the running execution context.
         surroundingAgent.executionContextStack.pop(calleeContext);
@@ -300,7 +305,7 @@ export class BuiltinFunctionValue extends FunctionValue {
     }
   }
 
-  Call(thisArgument, argumentsList) {
+  * Call(thisArgument, argumentsList) {
     const F = this;
 
     // const callerContext = surroundingAgent.runningExecutionContext;
@@ -312,7 +317,7 @@ export class BuiltinFunctionValue extends FunctionValue {
     calleeContext.ScriptOrModule = F.ScriptOrModule;
     // 8. Perform any necessary implementation-defined initialization of calleeContext.
     surroundingAgent.executionContextStack.push(calleeContext);
-    const result = nativeCall(F, argumentsList, thisArgument, Value.undefined);
+    const result = yield* nativeCall(F, argumentsList, thisArgument, Value.undefined);
     // Remove calleeContext from the execution context stack and
     // restore callerContext as the running execution context.
     surroundingAgent.executionContextStack.pop(calleeContext);
@@ -328,28 +333,28 @@ export class StringExoticObjectValue extends ObjectValue {
     this.StringData = undefined;
   }
 
-  GetOwnProperty(P) {
+  * GetOwnProperty(P) {
     const S = this;
     Assert(IsPropertyKey(P));
-    const desc = OrdinaryGetOwnProperty(S, P);
+    const desc = yield* OrdinaryGetOwnProperty(S, P);
     if (Type(desc) !== 'Undefined') {
       return desc;
     }
-    return X(StringGetOwnProperty(S, P));
+    return X(yield* StringGetOwnProperty(S, P));
   }
 
-  DefineOwnProperty(P, Desc) {
+  * DefineOwnProperty(P, Desc) {
     const S = this;
     Assert(IsPropertyKey(P));
-    const stringDesc = X(StringGetOwnProperty(S, P));
+    const stringDesc = X(yield* StringGetOwnProperty(S, P));
     if (Type(stringDesc) !== 'Undefined') {
       const extensible = S.Extensible;
       return X(IsCompatiblePropertyDescriptor(extensible, Desc, stringDesc));
     }
-    return X(OrdinaryDefineOwnProperty(S, P, Desc));
+    return X(yield* OrdinaryDefineOwnProperty(S, P, Desc));
   }
 
-  OwnPropertyKeys() {
+  * OwnPropertyKeys() {
     const O = this;
     const keys = [];
     const str = O.StringData.stringValue();
@@ -364,7 +369,7 @@ export class StringExoticObjectValue extends ObjectValue {
     //   Add P as the last element of keys.
     for (const P of O.properties.keys()) {
       // This is written with two nested ifs to work around https://github.com/devsnek/engine262/issues/24
-      if (isArrayIndex(P)) {
+      if (yield* isArrayIndex(P)) {
         if (X(ToInteger(P)).numberValue() >= len) {
           keys.push(P);
         }
@@ -375,7 +380,7 @@ export class StringExoticObjectValue extends ObjectValue {
     // P is not an array index, in ascending chronological order of property creation, do
     //   Add P as the last element of keys.
     for (const P of O.properties.keys()) {
-      if (Type(P) === 'String' && isArrayIndex(P) === false) {
+      if (Type(P) === 'String' && (yield* isArrayIndex(P)) === false) {
         keys.push(P);
       }
     }
@@ -401,63 +406,63 @@ export class ArgumentsExoticObjectValue extends ObjectValue {
     this.ParameterMap = undefined;
   }
 
-  GetOwnProperty(P) {
+  * GetOwnProperty(P) {
     const args = this;
-    const desc = OrdinaryGetOwnProperty(args, P);
+    const desc = yield* OrdinaryGetOwnProperty(args, P);
     if (desc === Value.undefined) {
       return desc;
     }
     const map = args.ParameterMap;
-    const isMapped = X(HasOwnProperty(map, P));
+    const isMapped = X(yield* HasOwnProperty(map, P));
     if (isMapped === Value.true) {
-      desc.Value = Get(map, P);
+      desc.Value = yield* Get(map, P);
     }
     return desc;
   }
 
-  DefineOwnProperty(P, Desc) {
+  * DefineOwnProperty(P, Desc) {
     const args = this;
     const map = args.ParameterMap;
-    const isMapped = X(HasOwnProperty(map, P));
+    const isMapped = X(yield* HasOwnProperty(map, P));
     let newArgDesc = Desc;
     if (isMapped === Value.true && IsDataDescriptor(Desc) === true) {
       if (Desc.Value === undefined && Desc.Writable !== undefined && Desc.Writable === Value.false) {
         newArgDesc = Descriptor({ ...Desc });
-        newArgDesc.Value = X(Get(map, P));
+        newArgDesc.Value = X(yield* Get(map, P));
       }
     }
-    const allowed = Q(OrdinaryDefineOwnProperty(args, P, newArgDesc));
+    const allowed = Q(yield* OrdinaryDefineOwnProperty(args, P, newArgDesc));
     if (allowed === Value.false) {
       return Value.false;
     }
     if (isMapped === Value.true) {
       if (IsAccessorDescriptor(Desc) === true) {
-        map.Delete(P);
+        yield* map.Delete(P);
       } else {
         if (Desc.Value !== undefined) {
-          const setStatus = Set(map, P, Desc.Value, Value.false);
+          const setStatus = yield* Set(map, P, Desc.Value, Value.false);
           Assert(setStatus === Value.true);
         }
         if (Desc.Writable !== undefined && Desc.Writable === Value.false) {
-          map.Delete(P);
+          yield* map.Delete(P);
         }
       }
     }
     return Value.true;
   }
 
-  Get(P, Receiver) {
+  * Get(P, Receiver) {
     const args = this;
     const map = args.ParameterMap;
-    const isMapped = X(HasOwnProperty(map, P));
+    const isMapped = X(yield* HasOwnProperty(map, P));
     if (isMapped === Value.false) {
-      return Q(OrdinaryGet(args, P, Receiver));
+      return Q(yield* OrdinaryGet(args, P, Receiver));
     } else {
-      return Get(map, P);
+      return yield* Get(map, P);
     }
   }
 
-  Set(P, V, Receiver) {
+  * Set(P, V, Receiver) {
     const args = this;
     let isMapped;
     let map;
@@ -465,22 +470,22 @@ export class ArgumentsExoticObjectValue extends ObjectValue {
       isMapped = false;
     } else {
       map = args.ParameterMap;
-      isMapped = X(HasOwnProperty(map, P)) === Value.true;
+      isMapped = X(yield* HasOwnProperty(map, P)) === Value.true;
     }
     if (isMapped) {
-      const setStatus = Set(map, P, V, Value.false);
+      const setStatus = yield* Set(map, P, V, Value.false);
       Assert(setStatus === Value.true);
     }
-    return Q(OrdinarySet(args, P, V, Receiver));
+    return Q(yield* OrdinarySet(args, P, V, Receiver));
   }
 
-  Delete(P) {
+  * Delete(P) {
     const args = this;
     const map = args.ParameterMap;
-    const isMapped = X(HasOwnProperty(map, P));
-    const result = Q(OrdinaryDelete(args, P));
+    const isMapped = X(yield* HasOwnProperty(map, P));
+    const result = Q(yield* OrdinaryDelete(args, P));
     if (result === Value.true && isMapped === Value.true) {
-      map.Delete(P);
+      yield* map.Delete(P);
     }
     return result;
   }
@@ -497,14 +502,14 @@ export class IntegerIndexedExoticObjectValue extends ObjectValue {
   }
 
   // 9.4.5.1 #sec-integer-indexed-exotic-objects-getownproperty-p
-  GetOwnProperty(P) {
+  * GetOwnProperty(P) {
     const O = this;
     Assert(IsPropertyKey(P));
     Assert(O instanceof ObjectValue && 'ViewedArrayBuffer' in O);
     if (Type(P) === 'String') {
-      const numericIndex = X(CanonicalNumericIndexString(P));
+      const numericIndex = X(yield* CanonicalNumericIndexString(P));
       if (numericIndex !== Value.undefined) {
-        const value = Q(IntegerIndexedElementGet(O, numericIndex));
+        const value = Q(yield* IntegerIndexedElementGet(O, numericIndex));
         if (value === Value.undefined) {
           return Value.undefined;
         }
@@ -516,16 +521,16 @@ export class IntegerIndexedExoticObjectValue extends ObjectValue {
         });
       }
     }
-    return OrdinaryGetOwnProperty(O, P);
+    return yield* OrdinaryGetOwnProperty(O, P);
   }
 
   // 9.4.5.2 #sec-integer-indexed-exotic-objects-hasproperty-p
-  HasProperty(P) {
+  * HasProperty(P) {
     const O = this;
     Assert(IsPropertyKey(P));
     Assert(O instanceof ObjectValue && 'ViewedArrayBuffer' in O);
     if (Type(P) === 'String') {
-      let numericIndex = X(CanonicalNumericIndexString(P));
+      let numericIndex = X(yield* CanonicalNumericIndexString(P));
       if (numericIndex !== Value.undefined) {
         const buffer = O.ViewedArrayBuffer;
         if (IsDetachedBuffer(buffer)) {
@@ -547,16 +552,16 @@ export class IntegerIndexedExoticObjectValue extends ObjectValue {
         return Value.true;
       }
     }
-    return Q(OrdinaryHasProperty(O, P));
+    return Q(yield* OrdinaryHasProperty(O, P));
   }
 
   // 9.4.5.3 #sec-integer-indexed-exotic-objects-defineownproperty-p-desc
-  DefineOwnProperty(P, Desc) {
+  * DefineOwnProperty(P, Desc) {
     const O = this;
     Assert(IsPropertyKey(P));
     Assert(O instanceof ObjectValue && 'ViewedArrayBuffer' in O);
     if (Type(P) === 'String') {
-      const numericIndex = X(CanonicalNumericIndexString(P));
+      const numericIndex = X(yield* CanonicalNumericIndexString(P));
       if (numericIndex !== Value.undefined) {
         if (IsInteger(numericIndex) === Value.false) {
           return Value.false;
@@ -585,42 +590,42 @@ export class IntegerIndexedExoticObjectValue extends ObjectValue {
         }
         if (Desc.Value !== undefined) {
           const value = Desc.Value;
-          return Q(IntegerIndexedElementSet(O, numericIndex, value));
+          return Q(yield* IntegerIndexedElementSet(O, numericIndex, value));
         }
         return Value.true;
       }
     }
-    return Q(OrdinaryDefineOwnProperty(O, P, Desc));
+    return Q(yield* OrdinaryDefineOwnProperty(O, P, Desc));
   }
 
   // 9.4.5.4 #sec-integer-indexed-exotic-objects-get-p-receiver
-  Get(P, Receiver) {
+  * Get(P, Receiver) {
     const O = this;
     Assert(IsPropertyKey(P));
     if (Type(P) === 'String') {
-      const numericIndex = X(CanonicalNumericIndexString(P));
+      const numericIndex = X(yield* CanonicalNumericIndexString(P));
       if (numericIndex !== Value.undefined) {
-        return Q(IntegerIndexedElementGet(O, numericIndex));
+        return Q(yield* IntegerIndexedElementGet(O, numericIndex));
       }
     }
-    return Q(OrdinaryGet(O, P, Receiver));
+    return Q(yield* OrdinaryGet(O, P, Receiver));
   }
 
   // 9.4.5.5 #sec-integer-indexed-exotic-objects-set-p-v-receiver
-  Set(P, V, Receiver) {
+  * Set(P, V, Receiver) {
     const O = this;
     Assert(IsPropertyKey(P));
     if (Type(P) === 'String') {
-      const numericIndex = X(CanonicalNumericIndexString(P));
+      const numericIndex = X(yield* CanonicalNumericIndexString(P));
       if (numericIndex !== Value.undefined) {
-        return Q(IntegerIndexedElementSet(O, numericIndex, V));
+        return Q(yield* IntegerIndexedElementSet(O, numericIndex, V));
       }
     }
-    return Q(OrdinarySet(O, P, V, Receiver));
+    return Q(yield* OrdinarySet(O, P, V, Receiver));
   }
 
   // 9.4.5.6 #sec-integer-indexed-exotic-objects-ownpropertykeys
-  OwnPropertyKeys() {
+  * OwnPropertyKeys() {
     const O = this;
     const keys = [];
     Assert(O instanceof ObjectValue
@@ -630,11 +635,11 @@ export class IntegerIndexedExoticObjectValue extends ObjectValue {
         && 'TypedArrayName' in O);
     const len = O.ArrayLength.numberValue();
     for (let i = 0; i < len; i += 1) {
-      keys.push(X(ToString(new Value(i))));
+      keys.push(X(yield* ToString(new Value(i))));
     }
     for (const P of O.properties.keys()) {
       if (Type(P) === 'String') {
-        if (!isIntegerIndex(P)) {
+        if (!(yield* isIntegerIndex(P))) {
           keys.push(P);
         }
       }
@@ -649,9 +654,9 @@ export class IntegerIndexedExoticObjectValue extends ObjectValue {
 }
 
 // 9.4.7.2 #sec-set-immutable-prototype
-function SetImmutablePrototype(O, V) {
+function* SetImmutablePrototype(O, V) {
   Assert(Type(V) === 'Object' || Type(V) === 'Null');
-  const current = Q(O.GetPrototypeOf());
+  const current = Q(yield* O.GetPrototypeOf());
   if (SameValue(V, current) === Value.true) {
     return Value.true;
   }
@@ -667,31 +672,31 @@ export class ModuleNamespaceExoticObjectValue extends ObjectValue {
     this.Prototype = Value.null;
   }
 
-  SetPrototypeOf(V) {
+  * SetPrototypeOf(V) {
     const O = this;
 
-    return Q(SetImmutablePrototype(O, V));
+    return Q(yield* SetImmutablePrototype(O, V));
   }
 
-  IsExtensible() {
+  * IsExtensible() {
     return Value.false;
   }
 
-  PreventExtensions() {
+  * PreventExtensions() {
     return Value.true;
   }
 
-  GetOwnProperty(P) {
+  * GetOwnProperty(P) {
     const O = this;
 
     if (Type(P) === 'Symbol') {
-      return OrdinaryGetOwnProperty(O, P);
+      return yield* OrdinaryGetOwnProperty(O, P);
     }
     const exports = O.Exports;
     if (!exports.includes(P)) {
       return Value.undefined;
     }
-    const value = Q(O.Get(P, O));
+    const value = Q(yield* O.Get(P, O));
     return Descriptor({
       Value: value,
       Writable: Value.true,
@@ -700,14 +705,14 @@ export class ModuleNamespaceExoticObjectValue extends ObjectValue {
     });
   }
 
-  DefineOwnProperty(P, Desc) {
+  * DefineOwnProperty(P, Desc) {
     const O = this;
 
     if (Type(P) === 'Symbol') {
-      return OrdinaryDefineOwnProperty(O, P, Desc);
+      return yield* OrdinaryDefineOwnProperty(O, P, Desc);
     }
 
-    const current = Q(O.GetOwnProperty(P));
+    const current = Q(yield* O.GetOwnProperty(P));
     if (current === Value.undefined) {
       return Value.false;
     }
@@ -729,11 +734,11 @@ export class ModuleNamespaceExoticObjectValue extends ObjectValue {
     return Value.true;
   }
 
-  HasProperty(P) {
+  * HasProperty(P) {
     const O = this;
 
     if (Type(P) === 'Symbol') {
-      return OrdinaryHasProperty(O, P);
+      return yield* OrdinaryHasProperty(O, P);
     }
     const exports = O.Exports;
     if (exports.includes(P)) {
@@ -742,12 +747,12 @@ export class ModuleNamespaceExoticObjectValue extends ObjectValue {
     return Value.false;
   }
 
-  Get(P, Receiver) {
+  * Get(P, Receiver) {
     const O = this;
 
     Assert(IsPropertyKey(P));
     if (Type(P) === 'Symbol') {
-      return OrdinaryGet(O, P, Receiver);
+      return yield* OrdinaryGet(O, P, Receiver);
     }
     const exports = O.Exports;
     if (!exports.includes(P)) {
@@ -763,19 +768,19 @@ export class ModuleNamespaceExoticObjectValue extends ObjectValue {
       return surroundingAgent.Throw('ReferenceError', msg('NotDefined', P));
     }
     const targetEnvRec = targetEnv.EnvironmentRecord;
-    return Q(targetEnvRec.GetBindingValue(binding.BindingName, Value.true));
+    return Q(yield* targetEnvRec.GetBindingValue(binding.BindingName, Value.true));
   }
 
   Set() {
     return Value.false;
   }
 
-  Delete(P) {
+  * Delete(P) {
     const O = this;
 
     Assert(IsPropertyKey(P));
     if (Type(P) === 'Symbol') {
-      return Q(OrdinaryDelete(O, P));
+      return Q(yield* OrdinaryDelete(O, P));
     }
     const exports = O.Exports;
     if (exports.includes(P)) {
@@ -784,11 +789,11 @@ export class ModuleNamespaceExoticObjectValue extends ObjectValue {
     return Value.true;
   }
 
-  OwnPropertyKeys() {
+  * OwnPropertyKeys() {
     const O = this;
 
     const exports = [...O.Exports];
-    const symbolKeys = X(OrdinaryOwnPropertyKeys(O));
+    const symbolKeys = X(yield* OrdinaryOwnPropertyKeys(O));
     exports.push(...symbolKeys);
     return exports;
   }
@@ -803,7 +808,7 @@ export class ProxyExoticObjectValue extends ObjectValue {
     this.ProxyHandler = undefined;
   }
 
-  GetPrototypeOf() {
+  * GetPrototypeOf() {
     const O = this;
 
     const handler = O.ProxyHandler;
@@ -812,26 +817,26 @@ export class ProxyExoticObjectValue extends ObjectValue {
     }
     Assert(Type(handler) === 'Object');
     const target = O.ProxyTarget;
-    const trap = Q(GetMethod(handler, new Value('getPrototypeOf')));
+    const trap = Q(yield* GetMethod(handler, new Value('getPrototypeOf')));
     if (trap === Value.undefined) {
-      return Q(target.GetPrototypeOf());
+      return Q(yield* target.GetPrototypeOf());
     }
-    const handlerProto = Q(Call(trap, handler, [target]));
+    const handlerProto = Q(yield* Call(trap, handler, [target]));
     if (Type(handlerProto) !== 'Object' && Type(handlerProto) !== 'Null') {
       return surroundingAgent.Throw('TypeError', '\'getPrototypeOf\' on proxy: trap returned neither object nor null');
     }
-    const extensibleTarget = Q(IsExtensible(target));
+    const extensibleTarget = Q(yield* IsExtensible(target));
     if (extensibleTarget === Value.true) {
       return handlerProto;
     }
-    const targetProto = Q(target.GetPrototypeOf());
+    const targetProto = Q(yield* target.GetPrototypeOf());
     if (SameValue(handlerProto, targetProto) === Value.false) {
       return surroundingAgent.Throw('TypeError', '\'getPrototypeOf\' on proxy: proxy target is non-extensible but the trap did not return its actual prototype');
     }
     return handlerProto;
   }
 
-  SetPrototypeOf(V) {
+  * SetPrototypeOf(V) {
     const O = this;
 
     Assert(Type(V) === 'Object' || Type(V) === 'Null');
@@ -841,26 +846,26 @@ export class ProxyExoticObjectValue extends ObjectValue {
     }
     Assert(Type(handler) === 'Object');
     const target = O.ProxyTarget;
-    const trap = Q(GetMethod(handler, new Value('setPrototypeOf')));
+    const trap = Q(yield* GetMethod(handler, new Value('setPrototypeOf')));
     if (trap === Value.undefined) {
-      return Q(target.SetPrototypeOf(V));
+      return Q(yield* target.SetPrototypeOf(V));
     }
-    const booleanTrapResult = ToBoolean(Q(Call(trap, handler, [target, V])));
+    const booleanTrapResult = ToBoolean(Q(yield* Call(trap, handler, [target, V])));
     if (booleanTrapResult === Value.false) {
       return Value.false;
     }
-    const extensibleTarget = Q(IsExtensible(target));
+    const extensibleTarget = Q(yield* IsExtensible(target));
     if (extensibleTarget === Value.true) {
       return Value.true;
     }
-    const targetProto = Q(target.GetPrototypeOf());
+    const targetProto = Q(yield* target.GetPrototypeOf());
     if (SameValue(V, targetProto) === Value.false) {
       return surroundingAgent.Throw('TypeError', '\'setPrototypeOf\' on proxy: trap returned truthy for setting a new prototype on the non-extensible proxy target');
     }
     return Value.true;
   }
 
-  IsExtensible() {
+  * IsExtensible() {
     const O = this;
 
     const handler = O.ProxyHandler;
@@ -869,19 +874,19 @@ export class ProxyExoticObjectValue extends ObjectValue {
     }
     Assert(Type(handler) === 'Object');
     const target = O.ProxyTarget;
-    const trap = Q(GetMethod(handler, new Value('isExtensible')));
+    const trap = Q(yield* GetMethod(handler, new Value('isExtensible')));
     if (trap === Value.undefined) {
-      return Q(target.IsExtensible());
+      return Q(yield* target.IsExtensible());
     }
-    const booleanTrapResult = ToBoolean(Q(Call(trap, handler, [target])));
-    const targetResult = Q(target.IsExtensible());
+    const booleanTrapResult = ToBoolean(Q(yield* Call(trap, handler, [target])));
+    const targetResult = Q(yield* target.IsExtensible());
     if (SameValue(booleanTrapResult, targetResult) === Value.false) {
       return surroundingAgent.Throw('TypeError', '\'isExtensible\' on proxy: trap result does not reflect extensibility of proxy target');
     }
     return booleanTrapResult;
   }
 
-  PreventExtensions() {
+  * PreventExtensions() {
     const O = this;
 
     const handler = O.ProxyHandler;
@@ -890,13 +895,13 @@ export class ProxyExoticObjectValue extends ObjectValue {
     }
     Assert(Type(handler) === 'Object');
     const target = O.ProxyTarget;
-    const trap = Q(GetMethod(handler, new Value('preventExtensions')));
+    const trap = Q(yield* GetMethod(handler, new Value('preventExtensions')));
     if (trap === Value.undefined) {
-      return Q(target.PreventExtensions());
+      return Q(yield* target.PreventExtensions());
     }
-    const booleanTrapResult = ToBoolean(Q(Call(trap, handler, [target])));
+    const booleanTrapResult = ToBoolean(Q(yield* Call(trap, handler, [target])));
     if (booleanTrapResult === Value.true) {
-      const targetIsExtensible = Q(target.IsExtensible());
+      const targetIsExtensible = Q(yield* target.IsExtensible());
       if (targetIsExtensible === Value.true) {
         return surroundingAgent.Throw('TypeError', '\'preventExtensions\' on proxy: trap returned truthy but the proxy target is extensible');
       }
@@ -904,7 +909,7 @@ export class ProxyExoticObjectValue extends ObjectValue {
     return booleanTrapResult;
   }
 
-  GetOwnProperty(P) {
+  * GetOwnProperty(P) {
     const O = this;
 
     Assert(IsPropertyKey(P));
@@ -914,15 +919,15 @@ export class ProxyExoticObjectValue extends ObjectValue {
     }
     Assert(Type(handler) === 'Object');
     const target = O.ProxyTarget;
-    const trap = Q(GetMethod(handler, new Value('getOwnPropertyDescriptor')));
+    const trap = Q(yield* GetMethod(handler, new Value('getOwnPropertyDescriptor')));
     if (trap === Value.undefined) {
-      return Q(target.GetOwnProperty(P));
+      return Q(yield* target.GetOwnProperty(P));
     }
-    const trapResultObj = Q(Call(trap, handler, [target, P]));
+    const trapResultObj = Q(yield* Call(trap, handler, [target, P]));
     if (Type(trapResultObj) !== 'Object' && Type(trapResultObj) !== 'Undefined') {
       return surroundingAgent.Throw('TypeError', '\'getOwnPropertyDescriptor\' on proxy: trap returned neither object nor undefined for property');
     }
-    const targetDesc = Q(target.GetOwnProperty(P));
+    const targetDesc = Q(yield* target.GetOwnProperty(P));
     if (trapResultObj === Value.undefined) {
       if (targetDesc === Value.undefined) {
         return Value.undefined;
@@ -930,14 +935,14 @@ export class ProxyExoticObjectValue extends ObjectValue {
       if (targetDesc.Configurable === Value.false) {
         return surroundingAgent.Throw('TypeError', '\'getOwnPropertyDescriptor\' on proxy: trap returned undefined for property which is non-configurable in the proxy target');
       }
-      const extensibleTarget = Q(IsExtensible(target));
+      const extensibleTarget = Q(yield* IsExtensible(target));
       Assert(Type(extensibleTarget) === 'Boolean');
       if (extensibleTarget === Value.false) {
         return surroundingAgent.Throw('TypeError', '\'getOwnPropertyDescriptor\' on proxy: trap returned undefined for property which exists in the non-extensible proxy target');
       }
       return Value.undefined;
     }
-    const extensibleTarget = Q(IsExtensible(target));
+    const extensibleTarget = Q(yield* IsExtensible(target));
     const resultDesc = Q(ToPropertyDescriptor(trapResultObj));
     CompletePropertyDescriptor(resultDesc);
     const valid = IsCompatiblePropertyDescriptor(extensibleTarget, resultDesc, targetDesc);
@@ -952,7 +957,7 @@ export class ProxyExoticObjectValue extends ObjectValue {
     return resultDesc;
   }
 
-  DefineOwnProperty(P, Desc) {
+  * DefineOwnProperty(P, Desc) {
     const O = this;
 
     Assert(IsPropertyKey(P));
@@ -962,17 +967,17 @@ export class ProxyExoticObjectValue extends ObjectValue {
     }
     Assert(Type(handler) === 'Object');
     const target = O.ProxyTarget;
-    const trap = Q(GetMethod(handler, new Value('defineProperty')));
+    const trap = Q(yield* GetMethod(handler, new Value('defineProperty')));
     if (trap === Value.undefined) {
-      return Q(target.DefineOwnProperty(P, Desc));
+      return Q(yield* target.DefineOwnProperty(P, Desc));
     }
     const descObj = FromPropertyDescriptor(Desc);
-    const booleanTrapResult = ToBoolean(Q(Call(trap, handler, [target, P, descObj])));
+    const booleanTrapResult = ToBoolean(Q(yield* Call(trap, handler, [target, P, descObj])));
     if (booleanTrapResult === Value.false) {
       return Value.false;
     }
-    const targetDesc = Q(target.GetOwnProperty(P));
-    const extensibleTarget = Q(IsExtensible(target));
+    const targetDesc = Q(yield* target.GetOwnProperty(P));
+    const extensibleTarget = Q(yield* IsExtensible(target));
     let settingConfigFalse;
     if (Desc.Configurable !== undefined && Desc.Configurable === Value.false) {
       settingConfigFalse = true;
@@ -997,7 +1002,7 @@ export class ProxyExoticObjectValue extends ObjectValue {
     return Value.true;
   }
 
-  HasProperty(P) {
+  * HasProperty(P) {
     const O = this;
 
     Assert(IsPropertyKey(P));
@@ -1007,13 +1012,13 @@ export class ProxyExoticObjectValue extends ObjectValue {
     }
     Assert(Type(handler) === 'Object');
     const target = O.ProxyTarget;
-    const trap = Q(GetMethod(handler, new Value('has')));
+    const trap = Q(yield* GetMethod(handler, new Value('has')));
     if (trap === Value.undefined) {
-      return Q(target.HasProperty(P));
+      return Q(yield* target.HasProperty(P));
     }
-    const booleanTrapResult = ToBoolean(Q(Call(trap, handler, [target, P])));
+    const booleanTrapResult = ToBoolean(Q(yield* Call(trap, handler, [target, P])));
     if (booleanTrapResult === Value.false) {
-      const targetDesc = Q(target.GetOwnProperty(P));
+      const targetDesc = Q(yield* target.GetOwnProperty(P));
       if (targetDesc !== Value.undefined) {
         if (targetDesc.Configurable === Value.false) {
           return surroundingAgent.Throw('TypeError', '\'has\' on proxy: trap returned falsy for property which exists in the proxy target as non-configurable');
@@ -1027,7 +1032,7 @@ export class ProxyExoticObjectValue extends ObjectValue {
     return booleanTrapResult;
   }
 
-  Get(P, Receiver) {
+  * Get(P, Receiver) {
     const O = this;
 
     Assert(IsPropertyKey(P));
@@ -1037,12 +1042,12 @@ export class ProxyExoticObjectValue extends ObjectValue {
     }
     Assert(Type(handler) === 'Object');
     const target = O.ProxyTarget;
-    const trap = Q(GetMethod(handler, new Value('get')));
+    const trap = Q(yield* GetMethod(handler, new Value('get')));
     if (trap === Value.undefined) {
-      return Q(target.Get(P, Receiver));
+      return Q(yield* target.Get(P, Receiver));
     }
     const trapResult = Q(Call(trap, handler, [target, P, Receiver]));
-    const targetDesc = Q(target.GetOwnProperty(P));
+    const targetDesc = Q(yield* target.GetOwnProperty(P));
     if (targetDesc !== Value.undefined && targetDesc.Configurable === Value.false) {
       if (IsDataDescriptor(targetDesc) === true && targetDesc.Writable === Value.false) {
         if (SameValue(trapResult, targetDesc.Value) === Value.false) {
@@ -1058,7 +1063,7 @@ export class ProxyExoticObjectValue extends ObjectValue {
     return trapResult;
   }
 
-  Set(P, V, Receiver) {
+  * Set(P, V, Receiver) {
     const O = this;
 
     Assert(IsPropertyKey(P));
@@ -1068,15 +1073,15 @@ export class ProxyExoticObjectValue extends ObjectValue {
     }
     Assert(Type(handler) === 'Object');
     const target = O.ProxyTarget;
-    const trap = Q(GetMethod(handler, new Value('set')));
+    const trap = Q(yield* GetMethod(handler, new Value('set')));
     if (trap === Value.undefined) {
-      return Q(target.Set(P, V, Receiver));
+      return Q(yield* target.Set(P, V, Receiver));
     }
-    const booleanTrapResult = ToBoolean(Q(Call(trap, handler, [target, P, V, Receiver])));
+    const booleanTrapResult = ToBoolean(Q(yield* Call(trap, handler, [target, P, V, Receiver])));
     if (booleanTrapResult === Value.false) {
       return Value.false;
     }
-    const targetDesc = Q(target.GetOwnProperty(P));
+    const targetDesc = Q(yield* target.GetOwnProperty(P));
     if (targetDesc !== Value.undefined && targetDesc.Configurable === Value.false) {
       if (IsDataDescriptor(targetDesc) === true && targetDesc.Writable === Value.false) {
         if (SameValue(V, targetDesc.Value) === Value.false) {
@@ -1092,7 +1097,7 @@ export class ProxyExoticObjectValue extends ObjectValue {
     return Value.true;
   }
 
-  Delete(P) {
+  * Delete(P) {
     const O = this;
 
     Assert(IsPropertyKey(P));
@@ -1102,15 +1107,15 @@ export class ProxyExoticObjectValue extends ObjectValue {
     }
     Assert(Type(handler) === 'Object');
     const target = O.ProxyTarget;
-    const trap = Q(GetMethod(handler, new Value('deleteProperty')));
+    const trap = Q(yield* GetMethod(handler, new Value('deleteProperty')));
     if (trap === Value.undefined) {
-      return Q(target.Delete(P));
+      return Q(yield* target.Delete(P));
     }
-    const booleanTrapResult = ToBoolean(Q(Call(trap, handler, [target, P])));
+    const booleanTrapResult = ToBoolean(Q(yield* Call(trap, handler, [target, P])));
     if (booleanTrapResult === Value.false) {
       return Value.false;
     }
-    const targetDesc = Q(target.GetOwnProperty(P));
+    const targetDesc = Q(yield* target.GetOwnProperty(P));
     if (targetDesc === Value.undefined) {
       return Value.true;
     }
@@ -1120,7 +1125,7 @@ export class ProxyExoticObjectValue extends ObjectValue {
     return Value.true;
   }
 
-  OwnPropertyKeys() {
+  * OwnPropertyKeys() {
     const O = this;
 
     const handler = O.ProxyHandler;
@@ -1129,23 +1134,23 @@ export class ProxyExoticObjectValue extends ObjectValue {
     }
     Assert(Type(handler) === 'Object');
     const target = O.ProxyTarget;
-    const trap = Q(GetMethod(handler, new Value('ownKeys')));
+    const trap = Q(yield* GetMethod(handler, new Value('ownKeys')));
     if (trap === Value.undefined) {
-      return Q(target.OwnPropertyKeys());
+      return Q(yield* target.OwnPropertyKeys());
     }
-    const trapResultArray = Q(Call(trap, handler, [target]));
-    const trapResult = Q(CreateListFromArrayLike(trapResultArray, ['String', 'Symbol']));
+    const trapResultArray = Q(yield* Call(trap, handler, [target]));
+    const trapResult = Q(yield* CreateListFromArrayLike(trapResultArray, ['String', 'Symbol']));
     if (trapResult.some((e) => trapResult.indexOf(e) !== trapResult.lastIndexOf(e))) {
       return surroundingAgent.Throw('TypeError', '\'ownKeys\' on proxy: trap returned duplicate keys');
     }
-    const extensibleTarget = Q(IsExtensible(target));
-    const targetKeys = Q(target.OwnPropertyKeys());
+    const extensibleTarget = Q(yield* IsExtensible(target));
+    const targetKeys = Q(yield* target.OwnPropertyKeys());
     // Assert: targetKeys is a List containing only String and Symbol values.
     // Assert: targetKeys contains no duplicate entries.
     const targetConfigurableKeys = [];
     const targetNonconfigurableKeys = [];
     for (const key of targetKeys) {
-      const desc = Q(target.GetOwnProperty(key));
+      const desc = Q(yield* target.GetOwnProperty(key));
       if (desc !== Value.undefined && desc.Configurable === Value.false) {
         targetNonconfigurableKeys.push(key);
       } else {

@@ -10,11 +10,11 @@ export function* Evaluate_LogicalORExpression({
   right: LogicalANDExpression,
 }) {
   const lref = yield* Evaluate(LogicalORExpression);
-  const lval = Q(GetValue(lref));
+  const lval = Q(yield* GetValue(lref));
   const lbool = ToBoolean(lval);
   if (lbool === Value.true) {
     return lval;
   }
   const rref = yield* Evaluate(LogicalANDExpression);
-  return Q(GetValue(rref));
+  return Q(yield* GetValue(rref));
 }

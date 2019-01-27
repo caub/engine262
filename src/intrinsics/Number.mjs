@@ -12,25 +12,25 @@ import { Q, X } from '../completion.mjs';
 import { BootstrapConstructor } from './Bootstrap.mjs';
 
 // 20.1.1.1 #sec-number-constructor-number-value
-function NumberConstructor(args, { NewTarget }) {
+function* NumberConstructor(args, { NewTarget }) {
   const [value] = args;
   let n;
   if (args.length === 0) {
     n = new Value(0);
   } else {
-    n = Q(ToNumber(value));
+    n = Q(yield* ToNumber(value));
   }
   if (NewTarget === Value.undefined) {
     return n;
   }
 
-  const O = OrdinaryCreateFromConstructor(NewTarget, '%NumberPrototype%', ['NumberData']);
+  const O = yield* OrdinaryCreateFromConstructor(NewTarget, '%NumberPrototype%', ['NumberData']);
   O.NumberData = n;
   return O;
 }
 
 // 20.1.2.2 #sec-number.isfinite
-function Number_isFinite([number = Value.undefined]) {
+function* Number_isFinite([number = Value.undefined]) {
   if (Type(number) !== 'Number') {
     return Value.false;
   }
@@ -42,7 +42,7 @@ function Number_isFinite([number = Value.undefined]) {
 }
 
 // 20.1.2.3 #sec-number.isinteger
-function Number_isInteger([number = Value.undefined]) {
+function* Number_isInteger([number = Value.undefined]) {
   if (Type(number) !== 'Number') {
     return Value.false;
   }
@@ -50,7 +50,7 @@ function Number_isInteger([number = Value.undefined]) {
   if (number.isNaN() || number.isInfinity()) {
     return Value.false;
   }
-  const integer = ToInteger(number);
+  const integer = yield* ToInteger(number);
   if (integer.numberValue() !== number.numberValue()) {
     return Value.false;
   }
@@ -58,7 +58,7 @@ function Number_isInteger([number = Value.undefined]) {
 }
 
 // 20.1.2.4 #sec-number.isnan
-function Number_isNaN([number = Value.undefined]) {
+function* Number_isNaN([number = Value.undefined]) {
   if (Type(number) !== 'Number') {
     return Value.false;
   }
@@ -70,7 +70,7 @@ function Number_isNaN([number = Value.undefined]) {
 }
 
 // 20.1.2.5 #sec-number.issafeinteger
-function Number_isSafeInteger([number = Value.undefined]) {
+function* Number_isSafeInteger([number = Value.undefined]) {
   if (Type(number) !== 'Number') {
     return Value.false;
   }
@@ -79,7 +79,7 @@ function Number_isSafeInteger([number = Value.undefined]) {
     return Value.false;
   }
 
-  const integer = X(ToInteger(number));
+  const integer = X(yield* ToInteger(number));
   if (integer.numberValue() !== number.numberValue()) {
     return Value.false;
   }
@@ -115,21 +115,21 @@ export function CreateNumber(realmRec) {
 
   // 20.1.2.12 #sec-number.parsefloat
   // The value of the Number.parseFloat data property is the same built-in function object that is the value of the parseFloat property of the global object defined in 18.2.4.
-  X(numberConstructor.DefineOwnProperty(new Value('parseFloat'), Descriptor({
+  numberConstructor.properties.set(new Value('parseFloat'), Descriptor({
     Value: realmRec.Intrinsics['%parseFloat%'],
     Writable: Value.true,
     Enumerable: Value.false,
     Configurable: Value.true,
-  })));
+  }));
 
   // 20.1.2.13 #sec-number.parseint
   // The value of the Number.parseInt data property is the same built-in function object that is the value of the parseInt property of the global object defined in 18.2.5.
-  X(numberConstructor.DefineOwnProperty(new Value('parseInt'), Descriptor({
+  numberConstructor.properties.set(new Value('parseInt'), Descriptor({
     Value: realmRec.Intrinsics['%parseInt%'],
     Writable: Value.true,
     Enumerable: Value.false,
     Configurable: Value.true,
-  })));
+  }));
 
   realmRec.Intrinsics['%Number%'] = numberConstructor;
 }

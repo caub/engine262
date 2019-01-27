@@ -12,7 +12,7 @@ import { NewDeclarativeEnvironment } from '../environment.mjs';
 import { Value } from '../value.mjs';
 import { X } from '../completion.mjs';
 
-function Evaluate_AsyncFunctionExpression_BindingIdentifier(AsyncFunctionExpression) {
+function* Evaluate_AsyncFunctionExpression_BindingIdentifier(AsyncFunctionExpression) {
   const {
     id: BindingIdentifier,
     params: FormalParameters,
@@ -25,17 +25,17 @@ function Evaluate_AsyncFunctionExpression_BindingIdentifier(AsyncFunctionExpress
   const funcEnv = NewDeclarativeEnvironment(scope);
   const envRec = funcEnv.EnvironmentRecord;
   const name = new Value(BindingIdentifier.name);
-  X(envRec.CreateImmutableBinding(name, Value.false));
-  const closure = X(AsyncFunctionCreate('Normal', FormalParameters, AsyncFunctionExpression, funcEnv, strict));
-  X(SetFunctionName(closure, name));
-  X(envRec.InitializeBinding(name, closure));
+  X(yield* envRec.CreateImmutableBinding(name, Value.false));
+  const closure = X(yield* AsyncFunctionCreate('Normal', FormalParameters, AsyncFunctionExpression, funcEnv, strict));
+  X(yield* SetFunctionName(closure, name));
+  X(yield* envRec.InitializeBinding(name, closure));
   closure.SourceText = sourceTextMatchedBy(AsyncFunctionExpression);
   return closure;
 }
 
-export function Evaluate_AsyncFunctionExpression(AsyncFunctionExpression) {
+export function* Evaluate_AsyncFunctionExpression(AsyncFunctionExpression) {
   if (isAsyncFunctionExpressionWithBindingIdentifier(AsyncFunctionExpression)) {
-    return Evaluate_AsyncFunctionExpression_BindingIdentifier(AsyncFunctionExpression);
+    return yield* Evaluate_AsyncFunctionExpression_BindingIdentifier(AsyncFunctionExpression);
   }
   const {
     params: FormalParameters,
@@ -45,7 +45,7 @@ export function Evaluate_AsyncFunctionExpression(AsyncFunctionExpression) {
   // code, let strict be true. Otherwise let strict be false.
   const strict = isStrictModeCode(AsyncFunctionExpression);
   const scope = surroundingAgent.runningExecutionContext.LexicalEnvironment;
-  const closure = X(AsyncFunctionCreate('Normal', FormalParameters, AsyncFunctionExpression, scope, strict));
+  const closure = X(yield* AsyncFunctionCreate('Normal', FormalParameters, AsyncFunctionExpression, scope, strict));
   closure.SourceText = sourceTextMatchedBy(AsyncFunctionExpression);
   return closure;
 }

@@ -42,16 +42,16 @@ export function thisTimeValue(value) {
 }
 
 // 20.3.4.2 #sec-date.prototype.getdate
-function DateProto_getDate(args, { thisValue }) {
+function* DateProto_getDate(args, { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
   if (t.isNaN()) {
     return new Value(NaN);
   }
-  return DateFromTime(LocalTime(t));
+  return yield* DateFromTime(LocalTime(t));
 }
 
 // 20.3.4.3 #sec-date.prototype.getday
-function DateProto_getDay(args, { thisValue }) {
+function* DateProto_getDay(args, { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
   if (t.isNaN()) {
     return new Value(NaN);
@@ -60,7 +60,7 @@ function DateProto_getDay(args, { thisValue }) {
 }
 
 // 20.3.4.4 #sec-date.prototype.getfullyear
-function DateProto_getFullYear(args, { thisValue }) {
+function* DateProto_getFullYear(args, { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
   if (t.isNaN()) {
     return new Value(NaN);
@@ -69,7 +69,7 @@ function DateProto_getFullYear(args, { thisValue }) {
 }
 
 // 20.3.4.5 #sec-date.prototype.gethours
-function DateProto_getHours(args, { thisValue }) {
+function* DateProto_getHours(args, { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
   if (t.isNaN()) {
     return new Value(NaN);
@@ -78,7 +78,7 @@ function DateProto_getHours(args, { thisValue }) {
 }
 
 // 20.3.4.6 #sec-date.prototype.getmilliseconds
-function DateProto_getMilliseconds(args, { thisValue }) {
+function* DateProto_getMilliseconds(args, { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
   if (t.isNaN()) {
     return new Value(NaN);
@@ -87,7 +87,7 @@ function DateProto_getMilliseconds(args, { thisValue }) {
 }
 
 // 20.3.4.7 #sec-date.prototype.getminutes
-function DateProto_getMinutes(args, { thisValue }) {
+function* DateProto_getMinutes(args, { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
   if (t.isNaN()) {
     return new Value(NaN);
@@ -96,7 +96,7 @@ function DateProto_getMinutes(args, { thisValue }) {
 }
 
 // 20.3.4.8 #sec-date.prototype.getmonth
-function DateProto_getMonth(args, { thisValue }) {
+function* DateProto_getMonth(args, { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
   if (t.isNaN()) {
     return new Value(NaN);
@@ -105,7 +105,7 @@ function DateProto_getMonth(args, { thisValue }) {
 }
 
 // 20.3.4.9 #sec-date.prototype.getseconds
-function DateProto_getSeconds(args, { thisValue }) {
+function* DateProto_getSeconds(args, { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
   if (t.isNaN()) {
     return new Value(NaN);
@@ -114,12 +114,12 @@ function DateProto_getSeconds(args, { thisValue }) {
 }
 
 // 20.3.4.10 #sec-date.prototype.gettime
-function DateProto_getTime(args, { thisValue }) {
+function* DateProto_getTime(args, { thisValue }) {
   return Q(thisTimeValue(thisValue));
 }
 
 // 20.3.4.11 #sec-date.prototype.gettimezoneoffset
-function DateProto_getTimezoneOffset(args, { thisValue }) {
+function* DateProto_getTimezoneOffset(args, { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
   if (t.isNaN()) {
     return new Value(NaN);
@@ -128,43 +128,43 @@ function DateProto_getTimezoneOffset(args, { thisValue }) {
 }
 
 // 20.3.4.12 #sec-date.prototype.getutcdate
-function DateProto_getUTCDate(args, { thisValue }) {
+function* DateProto_getUTCDate(args, { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
   if (t.isNaN()) {
     return new Value(NaN);
   }
-  return DateFromTime(t);
+  return yield* DateFromTime(t);
 }
 
 // 20.3.4.13 #sec-date.prototype.getutcday
-function DateProto_getUTCDay(args, { thisValue }) {
+function* DateProto_getUTCDay(args, { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
   if (t.isNaN()) {
     return new Value(NaN);
   }
-  return WeekDay(t);
+  return yield* WeekDay(t);
 }
 
 // 20.3.4.14 #sec-date.prototype.getutcfullyear
-function DateProto_getUTCFullYear(args, { thisValue }) {
+function* DateProto_getUTCFullYear(args, { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
   if (t.isNaN()) {
     return new Value(NaN);
   }
-  return YearFromTime(t);
+  return yield* YearFromTime(t);
 }
 
 // 20.3.4.15 #sec-date.prototype.getutchours
-function DateProto_getUTCHours(args, { thisValue }) {
+function* DateProto_getUTCHours(args, { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
   if (t.isNaN()) {
     return new Value(NaN);
   }
-  return HourFromTime(t);
+  return yield* HourFromTime(t);
 }
 
 // 20.3.4.16 #sec-date.prototype.getutcmilliseconds
-function DateProto_getUTCMilliseconds(args, { thisValue }) {
+function* DateProto_getUTCMilliseconds(args, { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
   if (t.isNaN()) {
     return new Value(NaN);
@@ -173,295 +173,323 @@ function DateProto_getUTCMilliseconds(args, { thisValue }) {
 }
 
 // 20.3.4.17 #sec-date.prototype.getutcminutes
-function DateProto_getUTCMinutes(args, { thisValue }) {
+function* DateProto_getUTCMinutes(args, { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
   if (t.isNaN()) {
     return new Value(NaN);
   }
-  return MinFromTime(t);
+  return yield* MinFromTime(t);
 }
 
 // 20.3.4.18 #sec-date.prototype.getutcmonth
-function DateProto_getUTCMonth(args, { thisValue }) {
+function* DateProto_getUTCMonth(args, { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
   if (t.isNaN()) {
     return new Value(NaN);
   }
-  return MonthFromTime(t);
+  return yield* MonthFromTime(t);
 }
 
 // 20.3.4.19 #sec-date.prototype.getutcseconds
-function DateProto_getUTCSeconds(args, { thisValue }) {
+function* DateProto_getUTCSeconds(args, { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
   if (t.isNaN()) {
     return new Value(NaN);
   }
-  return SecFromTime(t);
+  return yield* SecFromTime(t);
 }
 
 // 20.3.4.20 #sec-date.prototype.setdate
-function DateProto_setDate([date = Value.undefined], { thisValue }) {
+function* DateProto_setDate([date = Value.undefined], { thisValue }) {
   const t = LocalTime(Q(thisTimeValue(thisValue)));
-  const dt = Q(ToNumber(date));
-  const newDate = MakeDate(MakeDay(YearFromTime(t), MonthFromTime(t), dt), TimeWithinDay(t));
-  const u = TimeClip(UTC(newDate));
+  const dt = Q(yield* ToNumber(date));
+  const newDate = MakeDate(
+    yield* MakeDay(yield* YearFromTime(t), yield* MonthFromTime(t), dt),
+    yield* TimeWithinDay(t),
+  );
+  const u = yield* TimeClip(yield* UTC(newDate));
   thisValue.DateValue = u;
   return u;
 }
 
 // 20.3.4.21 #sec-date.prototype.setfullyear
-function DateProto_setFullYear([year = Value.undefined, month, date], { thisValue }) {
+function* DateProto_setFullYear([year = Value.undefined, month, date], { thisValue }) {
   let t = Q(thisTimeValue(thisValue));
   t = t.isNaN() ? new Value(0) : LocalTime(t);
-  const y = Q(ToNumber(year));
+  const y = Q(yield* ToNumber(year));
   let m;
   if (month !== undefined) {
-    m = Q(ToNumber(month));
+    m = Q(yield* ToNumber(month));
   } else {
-    m = MonthFromTime(t);
+    m = yield* MonthFromTime(t);
   }
   let dt;
   if (date !== undefined) {
-    dt = Q(ToNumber(date));
+    dt = Q(yield* ToNumber(date));
   } else {
-    dt = DateFromTime(t);
+    dt = yield* DateFromTime(t);
   }
-  const newDate = MakeDate(MakeDay(y, m, dt), TimeWithinDay(t));
-  const u = TimeClip(UTC(newDate));
+  const newDate = MakeDate(yield* MakeDay(y, m, dt), yield* TimeWithinDay(t));
+  const u = yield* TimeClip(yield* UTC(newDate));
   thisValue.DateValue = u;
   return u;
 }
 
 // 20.3.4.22 #sec-date.prototype.sethours
-function DateProto_setHours([hour = Value.undefined, min, sec, ms], { thisValue }) {
+function* DateProto_setHours([hour = Value.undefined, min, sec, ms], { thisValue }) {
   const t = LocalTime(Q(thisTimeValue(thisValue)));
-  const h = Q(ToNumber(hour));
+  const h = Q(yield* ToNumber(hour));
   let m;
   if (min !== undefined) {
-    m = Q(ToNumber(min));
+    m = Q(yield* ToNumber(min));
   } else {
-    m = MinFromTime(t);
+    m = yield* MinFromTime(t);
   }
   let s;
   if (sec !== undefined) {
-    s = Q(ToNumber(sec));
+    s = Q(yield* ToNumber(sec));
   } else {
-    s = SecFromTime(t);
+    s = yield* SecFromTime(t);
   }
   let milli;
   if (ms !== undefined) {
-    milli = Q(ToNumber(ms));
+    milli = Q(yield* ToNumber(ms));
   } else {
     milli = msFromTime(t);
   }
-  const date = MakeDate(Day(t), MakeTime(h, m, s, milli));
-  const u = TimeClip(UTC(date));
+  const date = MakeDate(yield* Day(t), yield* MakeTime(h, m, s, milli));
+  const u = yield* TimeClip(yield* UTC(date));
   thisValue.DateValue = u;
   return u;
 }
 
 // 20.3.4.23 #sec-date.prototype.setmilliseconds
-function DateProto_setMilliseconds([ms = Value.undefined], { thisValue }) {
+function* DateProto_setMilliseconds([ms = Value.undefined], { thisValue }) {
   const t = LocalTime(Q(thisTimeValue(thisValue)));
-  ms = Q(ToNumber(ms));
-  const time = MakeTime(HourFromTime(t), MinFromTime(t), SecFromTime(t), ms);
-  const u = TimeClip(UTC(MakeDate(Day(t), time)));
+  ms = Q(yield* ToNumber(ms));
+  const time = yield* MakeTime(
+    yield* HourFromTime(t),
+    yield* MinFromTime(t),
+    yield* SecFromTime(t),
+    ms,
+  );
+  const u = yield* TimeClip(yield* UTC(MakeDate(yield* Day(t), time)));
   thisValue.DateValue = u;
   return u;
 }
 
 // 20.3.4.24 #sec-date.prototype.setminutes
-function DateProto_setMinutes([min = Value.undefined, sec, ms], { thisValue }) {
+function* DateProto_setMinutes([min = Value.undefined, sec, ms], { thisValue }) {
   const t = LocalTime(Q(thisTimeValue(thisValue)));
-  const m = Q(ToNumber(min));
+  const m = Q(yield* ToNumber(min));
   let s;
   if (sec !== undefined) {
-    s = Q(ToNumber(sec));
+    s = Q(yield* ToNumber(sec));
   } else {
-    s = SecFromTime(t);
+    s = yield* SecFromTime(t);
   }
   let milli;
   if (ms !== undefined) {
-    milli = Q(ToNumber(ms));
+    milli = Q(yield* ToNumber(ms));
   } else {
     milli = msFromTime(t);
   }
-  const date = MakeDate(Day(t), MakeTime(HourFromTime(t), m, s, milli));
-  const u = TimeClip(UTC(date));
+  const date = MakeDate(yield* Day(t), yield* MakeTime(yield* HourFromTime(t), m, s, milli));
+  const u = yield* TimeClip(yield* UTC(date));
   thisValue.DateValue = u;
   return u;
 }
 
 // 20.3.4.25 #sec-date.prototype.setmonth
-function DateProto_setMonth([month = Value.undefined, date], { thisValue }) {
+function* DateProto_setMonth([month = Value.undefined, date], { thisValue }) {
   const t = LocalTime(Q(thisTimeValue(thisValue)));
-  const m = Q(ToNumber(month));
+  const m = Q(yield* ToNumber(month));
   let dt;
   if (date !== undefined) {
-    dt = Q(ToNumber(date));
+    dt = Q(yield* ToNumber(date));
   } else {
-    dt = DateFromTime(t);
+    dt = yield* DateFromTime(t);
   }
-  const newDate = MakeDate(MakeDay(YearFromTime(t), m, dt), TimeWithinDay(t));
-  const u = TimeClip(UTC(newDate));
+  const newDate = MakeDate(
+    yield* MakeDay(yield* YearFromTime(t), m, dt),
+    yield* TimeWithinDay(t),
+  );
+  const u = yield* TimeClip(yield* UTC(newDate));
   thisValue.DateValue = u;
   return u;
 }
 
 // 20.3.4.26 #sec-date.prototype.setseconds
-function DateProto_setSeconds([sec = Value.undefined, ms], { thisValue }) {
+function* DateProto_setSeconds([sec = Value.undefined, ms], { thisValue }) {
   const t = LocalTime(Q(thisTimeValue(thisValue)));
-  const s = Q(ToNumber(sec));
+  const s = Q(yield* ToNumber(sec));
   let milli;
   if (ms !== undefined) {
-    milli = Q(ToNumber(ms));
+    milli = Q(yield* ToNumber(ms));
   } else {
     milli = msFromTime(t);
   }
-  const date = MakeDate(Day(t), MakeTime(HourFromTime(t), MinFromTime(t), s, milli));
-  const u = TimeClip(UTC(date));
+  const date = MakeDate(
+    yield* Day(t),
+    yield* MakeTime(yield* HourFromTime(t), yield* MinFromTime(t), s, milli),
+  );
+  const u = yield* TimeClip(yield* UTC(date));
   thisValue.DateValue = u;
   return u;
 }
 
 // 20.3.4.27 #sec-date.prototype.settime
-function DateProto_setTime([time = Value.undefined], { thisValue }) {
+function* DateProto_setTime([time = Value.undefined], { thisValue }) {
   Q(thisTimeValue(thisValue));
-  const t = Q(ToNumber(time));
-  const v = TimeClip(t);
+  const t = Q(yield* ToNumber(time));
+  const v = yield* TimeClip(t);
   thisValue.DateValue = v;
   return v;
 }
 
 // 20.3.4.28 #sec-date.prototype.setutcdate
-function DateProto_setUTCDate([date = Value.undefined], { thisValue }) {
+function* DateProto_setUTCDate([date = Value.undefined], { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
-  const dt = Q(ToNumber(date));
-  const newDate = MakeDate(MakeDay(YearFromTime(t), MonthFromTime(t), dt), TimeWithinDay(t));
-  const v = TimeClip(newDate);
+  const dt = Q(yield* ToNumber(date));
+  const newDate = MakeDate(
+    yield* MakeDay(yield* YearFromTime(t), yield* MonthFromTime(t), dt),
+    yield* TimeWithinDay(t),
+  );
+  const v = yield* TimeClip(newDate);
   thisValue.DateValue = v;
   return v;
 }
 
 // 20.3.4.29 #sec-date.prototype.setutcfullyear
-function DateProto_setUTCFullYear([year = Value.undefined, month, date], { thisValue }) {
+function* DateProto_setUTCFullYear([year = Value.undefined, month, date], { thisValue }) {
   let t = Q(thisTimeValue(thisValue));
   if (t.isNaN()) {
     t = new Value(0);
   }
-  const y = Q(ToNumber(year));
+  const y = Q(yield* ToNumber(year));
   let m;
   if (month !== undefined) {
-    m = Q(ToNumber(month));
+    m = Q(yield* ToNumber(month));
   } else {
-    m = MonthFromTime(t);
+    m = yield* MonthFromTime(t);
   }
   let dt;
   if (date !== undefined) {
-    dt = Q(ToNumber(date));
+    dt = Q(yield* ToNumber(date));
   } else {
-    dt = DateFromTime(t);
+    dt = yield* DateFromTime(t);
   }
-  const newDate = MakeDate(MakeDay(y, m, dt), TimeWithinDay(t));
-  const v = TimeClip(newDate);
+  const newDate = MakeDate(yield* MakeDay(y, m, dt), yield* TimeWithinDay(t));
+  const v = yield* TimeClip(newDate);
   thisValue.DateValue = v;
   return v;
 }
 
 // 20.3.4.30 #sec-date.prototype.setutchours
-function DateProto_setUTCHours([hour = Value.undefined, min, sec, ms], { thisValue }) {
+function* DateProto_setUTCHours([hour = Value.undefined, min, sec, ms], { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
-  const h = Q(ToNumber(hour));
+  const h = Q(yield* ToNumber(hour));
   let m;
   if (min !== undefined) {
-    m = Q(ToNumber(min));
+    m = Q(yield* ToNumber(min));
   } else {
-    m = MinFromTime(t);
+    m = yield* MinFromTime(t);
   }
   let s;
   if (sec !== undefined) {
-    s = Q(ToNumber(sec));
+    s = Q(yield* ToNumber(sec));
   } else {
-    s = SecFromTime(t);
+    s = yield* SecFromTime(t);
   }
   let milli;
   if (ms !== undefined) {
-    milli = Q(ToNumber(ms));
+    milli = Q(yield* ToNumber(ms));
   } else {
     milli = msFromTime(t);
   }
   const newDate = MakeDate(Day(t), MakeTime(h, m, s, milli));
-  const v = TimeClip(newDate);
+  const v = yield* TimeClip(newDate);
   thisValue.DateValue = v;
   return v;
 }
 
 // 20.3.4.31 #sec-date.prototype.setutcmilliseconds
-function DateProto_setUTCMilliseconds([ms = Value.undefined], { thisValue }) {
+function* DateProto_setUTCMilliseconds([ms = Value.undefined], { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
-  const milli = Q(ToNumber(ms));
-  const time = MakeTime(HourFromTime(t), MinFromTime(t), SecFromTime(t), milli);
-  const v = TimeClip(MakeDate(Day(t), time));
+  const milli = Q(yield* ToNumber(ms));
+  const time = MakeTime(
+    HourFromTime(t),
+    MinFromTime(t),
+    SecFromTime(t),
+    milli,
+  );
+  const v = yield* TimeClip(MakeDate(Day(t), time));
   thisValue.DateValue = v;
   return v;
 }
 
 // 20.3.4.32 #sec-date.prototype.setutcminutes
-function DateProto_setUTCMinutes([min = Value.undefined, sec, ms], { thisValue }) {
+function* DateProto_setUTCMinutes([min = Value.undefined, sec, ms], { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
-  const m = Q(ToNumber(min));
+  const m = Q(yield* ToNumber(min));
   let s;
   if (sec !== undefined) {
-    s = Q(ToNumber(sec));
+    s = Q(yield* ToNumber(sec));
   } else {
-    s = SecFromTime(t);
+    s = yield* SecFromTime(t);
   }
   let milli;
   if (ms !== undefined) {
-    milli = Q(ToNumber(ms));
+    milli = Q(yield* ToNumber(ms));
   } else {
     milli = msFromTime(t);
   }
   const date = MakeDate(Day(t), MakeTime(HourFromTime(t), m, s, milli));
-  const v = TimeClip(date);
+  const v = yield* TimeClip(date);
   thisValue.DateValue = v;
   return v;
 }
 
 // 20.3.4.33 #sec-date.prototype.setutcmonth
-function DateProto_setUTCMonth([month = Value.undefined, date], { thisValue }) {
+function* DateProto_setUTCMonth([month = Value.undefined, date], { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
-  const m = Q(ToNumber(month));
+  const m = Q(yield* ToNumber(month));
   let dt;
   if (date !== undefined) {
-    dt = Q(ToNumber(date));
+    dt = Q(yield* ToNumber(date));
   } else {
     dt = DateFromTime(t);
   }
-  const newDate = MakeDate(MakeDay(YearFromTime(t), m, dt), TimeWithinDay(t));
+  const newDate = MakeDate(
+    MakeDay(YearFromTime(t), m, dt),
+    TimeWithinDay(t),
+  );
   const v = TimeClip(newDate);
   thisValue.DateValue = v;
   return v;
 }
 
 // 20.3.4.34 #sec-date.prototype.setutcseconds
-function DateProto_setUTCSeconds([sec = Value.undefined, ms], { thisValue }) {
+function* DateProto_setUTCSeconds([sec = Value.undefined, ms], { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
-  const s = Q(ToNumber(sec));
+  const s = Q(yield* ToNumber(sec));
   let milli;
   if (ms !== undefined) {
-    milli = Q(ToNumber(ms));
+    milli = Q(yield* ToNumber(ms));
   } else {
     milli = msFromTime(t);
   }
-  const date = MakeDate(Day(t), MakeTime(HourFromTime(t), MinFromTime(t), s, milli));
-  const v = TimeClip(date);
+  const date = MakeDate(
+    Day(t),
+    yield* MakeTime(HourFromTime(t), MinFromTime(t), s, milli),
+  );
+  const v = yield* TimeClip(date);
   thisValue.DateValue = v;
   return v;
 }
 
 // 20.3.4.35 #sec-date.prototype.todatestring
-function DateProto_toDateString(args, { thisValue }) {
+function* DateProto_toDateString(args, { thisValue }) {
   const O = thisValue;
   if (Type(O) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'Date', O));
@@ -475,7 +503,7 @@ function DateProto_toDateString(args, { thisValue }) {
 }
 
 // 20.3.4.36 #sec-date.prototype.toisostring
-function DateProto_toISOString(args, { thisValue }) {
+function* DateProto_toISOString(args, { thisValue }) {
   const t = Q(thisTimeValue(thisValue));
   if (!Number.isFinite(t.numberValue())) {
     return surroundingAgent.Throw('RangeError', 'Invalid time value');
@@ -504,35 +532,35 @@ function DateProto_toISOString(args, { thisValue }) {
 }
 
 // 20.3.4.37 #sec-date.prototype.tojson
-function DateProto_toJSON(args, { thisValue }) {
-  const O = Q(ToObject(thisValue));
-  const tv = Q(ToPrimitive(O, 'Number'));
+function* DateProto_toJSON(args, { thisValue }) {
+  const O = Q(yield* ToObject(thisValue));
+  const tv = Q(yield* ToPrimitive(O, 'Number'));
   if (Type(tv) === 'Number' && !Number.isFinite(tv.numberValue())) {
     return Value.null;
   }
-  return Q(Invoke(O, new Value('toISOString')));
+  return Q(yield* Invoke(O, new Value('toISOString')));
 }
 
 // 20.3.4.38 #sec-date.prototype.tolocaledatestring
-function DateProto_toLocaleDateString() {
+function* DateProto_toLocaleDateString() {
   // TODO: implement this function.
   return surroundingAgent.Throw('Error', 'Date.prototype.toLocaleDateString is not implemented');
 }
 
 // 20.3.4.39 #sec-date.prototype.tolocalestring
-function DateProto_toLocaleString() {
+function* DateProto_toLocaleString() {
   // TODO: implement this function.
   return surroundingAgent.Throw('Error', 'Date.prototype.toLocaleString is not implemented');
 }
 
 // 20.3.4.40 #sec-date.prototype.tolocaletimestring
-function DateProto_toLocaleTimeString() {
+function* DateProto_toLocaleTimeString() {
   // TODO: implement this function.
   return surroundingAgent.Throw('Error', 'Date.prototype.toLocaleTimeString is not implemented');
 }
 
 // 20.3.4.41 #sec-date.prototype.tostring
-function DateProto_toString(args, { thisValue }) {
+function* DateProto_toString(args, { thisValue }) {
   const tv = Q(thisTimeValue(thisValue));
   return ToDateString(tv);
 }
@@ -586,7 +614,7 @@ export function ToDateString(tv) {
 }
 
 // 20.3.4.42 #sec-date.prototype.totimestring
-function DateProto_toTimeString(args, { thisValue }) {
+function* DateProto_toTimeString(args, { thisValue }) {
   const O = thisValue;
   if (Type(O) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'Date', O));
@@ -600,7 +628,7 @@ function DateProto_toTimeString(args, { thisValue }) {
 }
 
 // 20.3.4.43 #sec-date.prototype.toutcstring
-function DateProto_toUTCString(args, { thisValue }) {
+function* DateProto_toUTCString(args, { thisValue }) {
   const O = thisValue;
   if (Type(O) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'Date', O));
@@ -617,12 +645,12 @@ function DateProto_toUTCString(args, { thisValue }) {
 }
 
 // 20.3.4.44 #sec-date.prototype.valueof
-function DateProto_valueOf(args, { thisValue }) {
+function* DateProto_valueOf(args, { thisValue }) {
   return Q(thisTimeValue(thisValue));
 }
 
 // 20.3.4.45 #sec-date.prototype-@@toprimitive
-function DateProto_toPrimitive([hint = Value.undefined], { thisValue }) {
+function* DateProto_toPrimitive([hint = Value.undefined], { thisValue }) {
   const O = thisValue;
   if (Type(O) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'Date', O));
@@ -635,7 +663,7 @@ function DateProto_toPrimitive([hint = Value.undefined], { thisValue }) {
   } else {
     return surroundingAgent.Throw('TypeError', msg('InvalidHint', hint));
   }
-  return Q(OrdinaryToPrimitive(O, tryFirst));
+  return Q(yield* OrdinaryToPrimitive(O, tryFirst));
 }
 
 export function CreateDatePrototype(realmRec) {

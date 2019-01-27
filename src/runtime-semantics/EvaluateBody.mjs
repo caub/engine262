@@ -144,11 +144,11 @@ export function* FunctionDeclarationInstantiation(func, argumentsList) {
   }
 
   for (const paramName of parameterNames) {
-    const alreadyDeclared = envRec.HasBinding(paramName);
+    const alreadyDeclared = yield* envRec.HasBinding(paramName);
     if (alreadyDeclared === Value.false) {
-      X(envRec.CreateMutableBinding(paramName, false));
+      X(yield* envRec.CreateMutableBinding(paramName, false));
       if (hasDuplicates === true) {
-        X(envRec.InitializeBinding(paramName, Value.undefined));
+        X(yield* envRec.InitializeBinding(paramName, Value.undefined));
       }
     }
   }
@@ -157,22 +157,22 @@ export function* FunctionDeclarationInstantiation(func, argumentsList) {
   if (argumentsObjectNeeded === true) {
     let ao;
     if (strict || simpleParameterList === false) {
-      ao = CreateUnmappedArgumentsObject(argumentsList);
+      ao = yield* CreateUnmappedArgumentsObject(argumentsList);
     } else {
-      ao = CreateMappedArgumentsObject(func, formals, argumentsList, envRec);
+      ao = yield* CreateMappedArgumentsObject(func, formals, argumentsList, envRec);
     }
     if (strict) {
-      X(envRec.CreateImmutableBinding(new Value('arguments'), Value.false));
+      X(yield* envRec.CreateImmutableBinding(new Value('arguments'), Value.false));
     } else {
-      X(envRec.CreateMutableBinding(new Value('arguments'), false));
+      X(yield* envRec.CreateMutableBinding(new Value('arguments'), false));
     }
-    envRec.InitializeBinding(new Value('arguments'), ao);
+    yield* envRec.InitializeBinding(new Value('arguments'), ao);
     parameterBindings = [...parameterNames, new Value('arguments')];
   } else {
     parameterBindings = parameterNames;
   }
 
-  const iteratorRecord = CreateListIteratorRecord(argumentsList);
+  const iteratorRecord = yield* CreateListIteratorRecord(argumentsList);
   if (hasDuplicates) {
     Q(yield* IteratorBindingInitialization_FormalParameters(formals, iteratorRecord, Value.undefined));
   } else {
@@ -186,8 +186,8 @@ export function* FunctionDeclarationInstantiation(func, argumentsList) {
     for (const n of varNames) {
       if (!instantiatedVarNames.includes(n)) {
         instantiatedVarNames.push(n);
-        X(envRec.CreateMutableBinding(n, false));
-        envRec.InitializeBinding(n, Value.undefined);
+        X(yield* envRec.CreateMutableBinding(n, false));
+        yield* envRec.InitializeBinding(n, Value.undefined);
       }
     }
     varEnv = env;
@@ -205,9 +205,9 @@ export function* FunctionDeclarationInstantiation(func, argumentsList) {
         if (!parameterBindings.includes(n) || functionNames.includes(n)) {
           initialValue = Value.undefined;
         } else {
-          initialValue = X(envRec.GetBindingValue(n, Value.false));
+          initialValue = X(yield* envRec.GetBindingValue(n, Value.false));
         }
-        varEnvRec.InitializeBinding(n, initialValue);
+        yield* varEnvRec.InitializeBinding(n, initialValue);
       }
     }
   }
@@ -249,17 +249,17 @@ export function* FunctionDeclarationInstantiation(func, argumentsList) {
   for (const d of lexDeclarations) {
     for (const dn of BoundNames_Declaration(d).map(Value)) {
       if (IsConstantDeclaration(d)) {
-        X(lexEnvRec.CreateImmutableBinding(dn, Value.true));
+        X(yield* lexEnvRec.CreateImmutableBinding(dn, Value.true));
       } else {
-        X(lexEnvRec.CreateMutableBinding(dn, false));
+        X(yield* lexEnvRec.CreateMutableBinding(dn, false));
       }
     }
   }
 
   for (const f of functionsToInitialize) {
     const fn = BoundNames_FunctionDeclaration(f)[0];
-    const fo = InstantiateFunctionObject(f, lexEnv);
-    X(varEnvRec.SetMutableBinding(new Value(fn), fo, Value.false));
+    const fo = yield* InstantiateFunctionObject(f, lexEnv);
+    X(yield* varEnvRec.SetMutableBinding(new Value(fn), fo, Value.false));
   }
 
   return new NormalCompletion(undefined);
@@ -310,7 +310,7 @@ export function getFunctionBodyType(ECMAScriptCode) {
 export function* EvaluateBody_ConciseBody_Expression(AssignmentExpression, functionObject, argumentsList) {
   Q(yield* FunctionDeclarationInstantiation(functionObject, argumentsList));
   const exprRef = yield* Evaluate(AssignmentExpression);
-  const exprValue = Q(GetValue(exprRef));
+  const exprValue = Q(yield* GetValue(exprRef));
   return new ReturnCompletion(exprValue);
 }
 
@@ -325,21 +325,25 @@ export function* EvaluateBody_FunctionBody(FunctionStatementList, functionObject
 // GeneratorBody : FunctionBody
 export function* EvaluateBody_GeneratorBody(GeneratorBody, functionObject, argumentsList) {
   Q(yield* FunctionDeclarationInstantiation(functionObject, argumentsList));
-  const G = Q(OrdinaryCreateFromConstructor(functionObject, '%GeneratorPrototype%', ['GeneratorState', 'GeneratorContext']));
-  GeneratorStart(G, GeneratorBody);
+  const G = Q(yield* OrdinaryCreateFromConstructor(
+    functionObject,
+    '%GeneratorPrototype%',
+    ['GeneratorState', 'GeneratorContext'],
+  ));
+  yield* GeneratorStart(G, GeneratorBody);
   return new ReturnCompletion(G);
 }
 
 // 14.7.11 #sec-async-function-definitions-EvaluateBody
 // AsyncFunctionBody : FunctionBody
 export function* EvaluateBody_AsyncFunctionBody(FunctionBody, functionObject, argumentsList) {
-  const promiseCapability = X(NewPromiseCapability(surroundingAgent.intrinsic('%Promise%')));
+  const promiseCapability = X(yield* NewPromiseCapability(surroundingAgent.intrinsic('%Promise%')));
   const declResult = yield* FunctionDeclarationInstantiation(functionObject, argumentsList);
   if (!(declResult instanceof AbruptCompletion)) {
     // false = is not expression
-    X(AsyncFunctionStart(promiseCapability, FunctionBody, false));
+    X(yield* AsyncFunctionStart(promiseCapability, FunctionBody, false));
   } else {
-    X(Call(promiseCapability.Reject, Value.undefined, [declResult.Value]));
+    X(yield* Call(promiseCapability.Reject, Value.undefined, [declResult.Value]));
   }
   return new Completion('return', promiseCapability.Promise, undefined);
 }
@@ -347,20 +351,20 @@ export function* EvaluateBody_AsyncFunctionBody(FunctionBody, functionObject, ar
 // 14.8.14 #sec-async-arrow-function-definitions-EvaluateBody
 // AsyncConciseBody : AssignmentExpression
 export function* EvaluateBody_AsyncConciseBody_AssignmentExpression(AssignmentExpression, functionObject, argumentsList) {
-  const promiseCapability = X(NewPromiseCapability(surroundingAgent.intrinsic('%Promise%')));
+  const promiseCapability = X(yield* NewPromiseCapability(surroundingAgent.intrinsic('%Promise%')));
   const declResult = yield* FunctionDeclarationInstantiation(functionObject, argumentsList);
   if (!(declResult instanceof AbruptCompletion)) {
     // true = is expression
-    X(AsyncFunctionStart(promiseCapability, AssignmentExpression, true));
+    X(yield* AsyncFunctionStart(promiseCapability, AssignmentExpression, true));
   } else {
-    X(Call(promiseCapability.Reject, Value.undefined, [declResult.Value]));
+    X(yield* Call(promiseCapability.Reject, Value.undefined, [declResult.Value]));
   }
   return new Completion('return', promiseCapability.Promise, undefined);
 }
 
 export function* EvaluateBody_AsyncGeneratorBody(FunctionBody, functionObject, argumentsList) {
   Q(yield* FunctionDeclarationInstantiation(functionObject, argumentsList));
-  const generator = Q(OrdinaryCreateFromConstructor(functionObject, '%AsyncGeneratorPrototype%', [
+  const generator = Q(yield* OrdinaryCreateFromConstructor(functionObject, '%AsyncGeneratorPrototype%', [
     'AsyncGeneratorState',
     'AsyncGeneratorContext',
     'AsyncGeneratorQueue',

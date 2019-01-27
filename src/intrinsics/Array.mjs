@@ -38,7 +38,7 @@ import { OutOfRange, msg } from '../helpers.mjs';
 import { BootstrapConstructor } from './Bootstrap.mjs';
 
 // 22.1.1 #sec-array-constructor
-function ArrayConstructor(argumentsList, { NewTarget }) {
+function* ArrayConstructor(argumentsList, { NewTarget }) {
   const numberOfArgs = argumentsList.length;
   if (numberOfArgs === 0) {
     // 22.1.1.1 #sec-array-constructor-array
@@ -46,8 +46,8 @@ function ArrayConstructor(argumentsList, { NewTarget }) {
     if (Type(NewTarget) === 'Undefined') {
       NewTarget = surroundingAgent.activeFunctionObject;
     }
-    const proto = GetPrototypeFromConstructor(NewTarget, '%ArrayPrototype%');
-    return ArrayCreate(new Value(0), proto);
+    const proto = yield* GetPrototypeFromConstructor(NewTarget, '%ArrayPrototype%');
+    return yield* ArrayCreate(new Value(0), proto);
   } else if (numberOfArgs === 1) {
     // 22.1.1.2 #sec-array-len
     const [len] = argumentsList;
@@ -55,20 +55,20 @@ function ArrayConstructor(argumentsList, { NewTarget }) {
     if (Type(NewTarget) === 'Undefined') {
       NewTarget = surroundingAgent.activeFunctionObject;
     }
-    const proto = GetPrototypeFromConstructor(NewTarget, '%ArrayPrototype%');
-    const array = ArrayCreate(new Value(0), proto);
+    const proto = yield* GetPrototypeFromConstructor(NewTarget, '%ArrayPrototype%');
+    const array = yield* ArrayCreate(new Value(0), proto);
     let intLen;
     if (Type(len) !== 'Number') {
-      const defineStatus = X(CreateDataProperty(array, new Value('0'), len));
+      const defineStatus = X(yield* CreateDataProperty(array, new Value('0'), len));
       Assert(defineStatus === Value.true);
       intLen = new Value(1);
     } else {
-      intLen = ToUint32(len);
+      intLen = yield* ToUint32(len);
       if (intLen.numberValue() !== len.numberValue()) {
         return surroundingAgent.Throw('RangeError');
       }
     }
-    Set(array, new Value('length'), intLen, Value.true);
+    yield* Set(array, new Value('length'), intLen, Value.true);
     return array;
   } else if (numberOfArgs >= 2) {
     // 22.1.1.3 #sec-array-items
@@ -77,17 +77,17 @@ function ArrayConstructor(argumentsList, { NewTarget }) {
     if (Type(NewTarget) === 'Undefined') {
       NewTarget = surroundingAgent.activeFunctionObject;
     }
-    const proto = GetPrototypeFromConstructor(NewTarget, '%ArrayPrototype%');
-    const array = ArrayCreate(new Value(0), proto);
+    const proto = yield* GetPrototypeFromConstructor(NewTarget, '%ArrayPrototype%');
+    const array = yield* ArrayCreate(new Value(0), proto);
     let k = 0;
     while (k < numberOfArgs) {
-      const Pk = ToString(new Value(k));
+      const Pk = yield* ToString(new Value(k));
       const itemK = items[k];
-      const defineStatus = X(CreateDataProperty(array, Pk, itemK));
+      const defineStatus = X(yield* CreateDataProperty(array, Pk, itemK));
       Assert(defineStatus === Value.true);
       k += 1;
     }
-    Assert(X(Get(array, new Value('length'))).numberValue() === numberOfArgs);
+    Assert(X(yield* Get(array, new Value('length'))).numberValue() === numberOfArgs);
     return array;
   }
 
@@ -95,7 +95,7 @@ function ArrayConstructor(argumentsList, { NewTarget }) {
 }
 
 // 22.1.2.1 #sec-array.from
-function Array_from([items = Value.undefined, mapfn = Value.undefined, thisArg], { thisValue }) {
+function* Array_from([items = Value.undefined, mapfn = Value.undefined, thisArg], { thisValue }) {
   const C = thisValue;
   let mapping;
   let T;
@@ -113,98 +113,98 @@ function Array_from([items = Value.undefined, mapfn = Value.undefined, thisArg],
     }
     mapping = true;
   }
-  const usingIterator = Q(GetMethod(items, wellKnownSymbols.iterator));
+  const usingIterator = Q(yield* GetMethod(items, wellKnownSymbols.iterator));
   if (usingIterator !== Value.undefined) {
     if (IsConstructor(C) === Value.true) {
-      A = Q(Construct(C));
+      A = Q(yield* Construct(C));
     } else {
-      A = X(ArrayCreate(new Value(0)));
+      A = X(yield* ArrayCreate(new Value(0)));
     }
-    const iteratorRecord = Q(GetIterator(items, 'sync', usingIterator));
+    const iteratorRecord = Q(yield* GetIterator(items, 'sync', usingIterator));
     let k = 0;
     while (true) { // eslint-disable-line no-constant-condition
       if (k >= (2 ** 53) - 1) {
         const error = new ThrowCompletion(surroundingAgent.Throw('TypeError', msg('ArrayPastSafeLength')).Value);
-        return Q(IteratorClose(iteratorRecord, error));
+        return Q(yield* IteratorClose(iteratorRecord, error));
       }
-      const Pk = X(ToString(new Value(k)));
-      const next = Q(IteratorStep(iteratorRecord));
+      const Pk = X(yield* ToString(new Value(k)));
+      const next = Q(yield* IteratorStep(iteratorRecord));
       if (next === Value.false) {
-        Q(Set(A, new Value('length'), new Value(k), Value.true));
+        Q(yield* Set(A, new Value('length'), new Value(k), Value.true));
         return A;
       }
-      const nextValue = Q(IteratorValue(next));
+      const nextValue = Q(yield* IteratorValue(next));
       let mappedValue;
       if (mapping) {
-        mappedValue = Call(mapfn, T, [nextValue, new Value(k)]);
+        mappedValue = yield* Call(mapfn, T, [nextValue, new Value(k)]);
         if (mappedValue instanceof AbruptCompletion) {
-          return Q(IteratorClose(iteratorRecord, mappedValue));
+          return Q(yield* IteratorClose(iteratorRecord, mappedValue));
         }
         mappedValue = mappedValue.Value;
       } else {
         mappedValue = nextValue;
       }
-      const defineStatus = CreateDataPropertyOrThrow(A, Pk, mappedValue);
+      const defineStatus = yield* CreateDataPropertyOrThrow(A, Pk, mappedValue);
       if (defineStatus instanceof AbruptCompletion) {
-        return Q(IteratorClose(iteratorRecord, defineStatus));
+        return Q(yield* IteratorClose(iteratorRecord, defineStatus));
       }
       k += 1;
     }
   }
-  const arrayLike = X(ToObject(items));
-  const lenProp = Q(Get(arrayLike, new Value('length')));
-  const len = Q(ToLength(lenProp));
+  const arrayLike = X(yield* ToObject(items));
+  const lenProp = Q(yield* Get(arrayLike, new Value('length')));
+  const len = Q(yield* ToLength(lenProp));
   if (IsConstructor(C) === Value.true) {
-    A = Q(Construct(C, [len]));
+    A = Q(yield* Construct(C, [len]));
   } else {
-    A = Q(ArrayCreate(len));
+    A = Q(yield* ArrayCreate(len));
   }
   let k = 0;
   while (k < len.numberValue()) {
-    const Pk = X(ToString(new Value(k)));
-    const kValue = Q(Get(arrayLike, Pk));
+    const Pk = X(yield* ToString(new Value(k)));
+    const kValue = Q(yield* Get(arrayLike, Pk));
     let mappedValue;
     if (mapping === true) {
-      mappedValue = Q(Call(mapfn, T, [kValue, new Value(k)]));
+      mappedValue = Q(yield* Call(mapfn, T, [kValue, new Value(k)]));
     } else {
       mappedValue = kValue;
     }
-    Q(CreateDataPropertyOrThrow(A, Pk, mappedValue));
+    Q(yield* CreateDataPropertyOrThrow(A, Pk, mappedValue));
     k += 1;
   }
-  Q(Set(A, new Value('length'), len, Value.true));
+  Q(yield* Set(A, new Value('length'), len, Value.true));
   return A;
 }
 
 // 22.1.2.2 #sec-array.isarray
-function Array_isArray([arg = Value.undefined]) {
+function* Array_isArray([arg = Value.undefined]) {
   return Q(IsArray(arg));
 }
 
 // 22.1.2.3 #sec-array.of
-function Array_of(items, { thisValue }) {
+function* Array_of(items, { thisValue }) {
   const len = items.length;
   // Let items be the List of arguments passed to this function.
   const C = thisValue;
   let A;
   if (IsConstructor(C) === Value.true) {
-    A = Q(Construct(C, [new Value(len)]));
+    A = Q(yield* Construct(C, [new Value(len)]));
   } else {
-    A = Q(ArrayCreate(new Value(len)));
+    A = Q(yield* ArrayCreate(new Value(len)));
   }
   let k = 0;
   while (k < len) {
     const kValue = items[k];
-    const Pk = X(ToString(new Value(k)));
-    Q(CreateDataPropertyOrThrow(A, Pk, kValue));
+    const Pk = X(yield* ToString(new Value(k)));
+    Q(yield* CreateDataPropertyOrThrow(A, Pk, kValue));
     k += 1;
   }
-  Q(Set(A, new Value('length'), new Value(len), Value.true));
+  Q(yield* Set(A, new Value('length'), new Value(len), Value.true));
   return A;
 }
 
 // 22.1.2.5 #sec-get-array-@@species
-function Array_speciesGetter(args, { thisValue }) {
+function* Array_speciesGetter(args, { thisValue }) {
   return thisValue;
 }
 

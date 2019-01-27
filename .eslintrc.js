@@ -29,6 +29,8 @@ module.exports = {
     'no-restricted-syntax': 'off',
     'no-use-before-define': 'off',
     'no-continue': 'off',
+    'no-extra-parens': 'error',
+    'require-yield': 'off',
     'import/no-cycle': 'off',
     'import/prefer-default-export': 'off',
     'import/no-unresolved': 'off',

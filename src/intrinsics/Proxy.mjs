@@ -13,7 +13,6 @@ import {
   IsConstructor,
   ObjectCreate,
   SetFunctionLength,
-  SetFunctionName,
 } from '../abstract-ops/all.mjs';
 import {
   ProxyExoticObjectValue,
@@ -21,9 +20,9 @@ import {
   Value,
 } from '../value.mjs';
 import { Q, X } from '../completion.mjs';
-import { assignProps } from './Bootstrap.mjs';
+import { assignProps, setFunctionProps } from './Bootstrap.mjs';
 
-function ProxyCallSlot(thisArgument, argumentsList) {
+function* ProxyCallSlot(thisArgument, argumentsList) {
   const O = this;
 
   const handler = O.ProxyHandler;
@@ -32,15 +31,15 @@ function ProxyCallSlot(thisArgument, argumentsList) {
   }
   Assert(Type(handler) === 'Object');
   const target = O.ProxyTarget;
-  const trap = Q(GetMethod(handler, new Value('apply')));
+  const trap = Q(yield* GetMethod(handler, new Value('apply')));
   if (trap === Value.undefined) {
-    return Q(Call(target, thisArgument, argumentsList));
+    return Q(yield* Call(target, thisArgument, argumentsList));
   }
-  const argArray = CreateArrayFromList(argumentsList);
-  return Q(Call(trap, handler, [target, thisArgument, argArray]));
+  const argArray = yield* CreateArrayFromList(argumentsList);
+  return Q(yield* Call(trap, handler, [target, thisArgument, argArray]));
 }
 
-function ProxyConstructSlot(argumentsList, newTarget) {
+function* ProxyConstructSlot(argumentsList, newTarget) {
   const O = this;
 
   const handler = O.ProxyHandler;
@@ -49,20 +48,20 @@ function ProxyConstructSlot(argumentsList, newTarget) {
   }
   Assert(Type(handler) === 'Object');
   const target = O.ProxyTarget;
-  const trap = Q(GetMethod(handler, new Value('construct')));
+  const trap = Q(yield* GetMethod(handler, new Value('construct')));
   if (trap === Value.undefined) {
     Assert(IsConstructor(target) === Value.true);
-    return Q(Construct(target, argumentsList, newTarget));
+    return Q(yield* Construct(target, argumentsList, newTarget));
   }
-  const argArray = CreateArrayFromList(argumentsList);
-  const newObj = Q(Call(trap, handler, [target, argArray, newTarget]));
+  const argArray = yield* CreateArrayFromList(argumentsList);
+  const newObj = Q(yield* Call(trap, handler, [target, argArray, newTarget]));
   if (Type(newObj) !== 'Object') {
     return surroundingAgent.Throw('TypeError', 'Proxy trap returned non-object');
   }
   return newObj;
 }
 
-function ProxyCreate(target, handler) {
+function* ProxyCreate(target, handler) {
   if (Type(target) !== 'Object') {
     return surroundingAgent.Throw('TypeError', 'Cannot create proxy with a non-object as target');
   }
@@ -108,22 +107,21 @@ function ProxyRevocationFunctions() {
   return Value.undefined;
 }
 
-function Proxy_revocable([target = Value.undefined, handler = Value.undefined]) {
+function* Proxy_revocable([target = Value.undefined, handler = Value.undefined]) {
   const p = Q(ProxyCreate(target, handler));
   const steps = ProxyRevocationFunctions;
   const revoker = CreateBuiltinFunction(steps, ['RevocableProxy']);
-  SetFunctionLength(revoker, new Value(0));
+  X(yield* SetFunctionLength(revoker, new Value(0)));
   revoker.RevocableProxy = p;
   const result = ObjectCreate(surroundingAgent.intrinsic('%ObjectPrototype%'));
-  X(CreateDataProperty(result, new Value('proxy'), p));
-  X(CreateDataProperty(result, new Value('revoke'), revoker));
+  X(yield* CreateDataProperty(result, new Value('proxy'), p));
+  X(yield* CreateDataProperty(result, new Value('revoke'), revoker));
   return result;
 }
 
 export function CreateProxy(realmRec) {
   const proxyConstructor = CreateBuiltinFunction(ProxyConstructor, [], realmRec, undefined, Value.true);
-  SetFunctionName(proxyConstructor, new Value('Proxy'));
-  SetFunctionLength(proxyConstructor, new Value(2));
+  setFunctionProps(proxyConstructor, new Value('Proxy'), new Value(2));
 
   assignProps(realmRec, proxyConstructor, [
     ['revocable', Proxy_revocable, 2],

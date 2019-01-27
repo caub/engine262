@@ -21,11 +21,11 @@ import { Q, X } from '../completion.mjs';
 import { OutOfRange, msg } from '../helpers.mjs';
 
 // 6.1.7 #integer-index
-export function isIntegerIndex(V) {
+export function* isIntegerIndex(V) {
   if (Type(V) !== 'String') {
     return false;
   }
-  const numeric = X(CanonicalNumericIndexString(V));
+  const numeric = X(yield* CanonicalNumericIndexString(V));
   if (numeric === Value.undefined) {
     return false;
   }
@@ -36,11 +36,11 @@ export function isIntegerIndex(V) {
 }
 
 // 6.1.7 #array-index
-export function isArrayIndex(V) {
+export function* isArrayIndex(V) {
   if (Type(V) !== 'String') {
     return false;
   }
-  const numeric = X(CanonicalNumericIndexString(V));
+  const numeric = X(yield* CanonicalNumericIndexString(V));
   if (numeric === Value.undefined) {
     return false;
   }
@@ -110,7 +110,7 @@ export function IsConstructor(argument) {
 }
 
 // 7.2.5 IsExtensible
-export function IsExtensible(O) {
+export function* IsExtensible(O) {
   Assert(Type(O) === 'Object');
   return O.IsExtensible();
 }
@@ -141,11 +141,11 @@ export function IsPropertyKey(argument) {
 }
 
 // 7.2.8 IsRegExp
-export function IsRegExp(argument) {
+export function* IsRegExp(argument) {
   if (Type(argument) !== 'Object') {
     return Value.false;
   }
-  const matcher = Q(Get(argument, wellKnownSymbols.match));
+  const matcher = Q(yield* Get(argument, wellKnownSymbols.match));
   if (matcher !== Value.undefined) {
     return ToBoolean(matcher);
   }
@@ -249,21 +249,21 @@ export function SameValueNonNumber(x, y) {
 }
 
 // 7.2.13 #sec-abstract-relational-comparison
-export function AbstractRelationalComparison(x, y, LeftFirst = true) {
+export function* AbstractRelationalComparison(x, y, LeftFirst = true) {
   let px;
   let py;
   if (LeftFirst === true) {
-    px = Q(ToPrimitive(x, 'Number'));
-    py = Q(ToPrimitive(y, 'Number'));
+    px = Q(yield* ToPrimitive(x, 'Number'));
+    py = Q(yield* ToPrimitive(y, 'Number'));
   } else {
-    py = Q(ToPrimitive(y, 'Number'));
-    px = Q(ToPrimitive(x, 'Number'));
+    py = Q(yield* ToPrimitive(y, 'Number'));
+    px = Q(yield* ToPrimitive(x, 'Number'));
   }
   if (Type(px) === 'String' && Type(py) === 'String') {
-    if (IsStringPrefix(py, px)) {
+    if (yield* IsStringPrefix(py, px)) {
       return Value.false;
     }
-    if (IsStringPrefix(px, py)) {
+    if (yield* IsStringPrefix(px, py)) {
       return Value.true;
     }
     let k = 0;
@@ -281,8 +281,8 @@ export function AbstractRelationalComparison(x, y, LeftFirst = true) {
       return Value.false;
     }
   } else {
-    const nx = Q(ToNumber(px));
-    const ny = Q(ToNumber(py));
+    const nx = Q(yield* ToNumber(px));
+    const ny = Q(yield* ToNumber(py));
     if (nx.isNaN()) {
       return Value.undefined;
     }
@@ -312,9 +312,9 @@ export function AbstractRelationalComparison(x, y, LeftFirst = true) {
 }
 
 // 7.2.14 #sec-abstract-equality-comparison
-export function AbstractEqualityComparison(x, y) {
+export function* AbstractEqualityComparison(x, y) {
   if (Type(x) === Type(y)) {
-    return StrictEqualityComparison(x, y);
+    return yield* StrictEqualityComparison(x, y);
   }
   if (x === Value.null && y === Value.undefined) {
     return Value.true;
@@ -323,22 +323,22 @@ export function AbstractEqualityComparison(x, y) {
     return Value.true;
   }
   if (Type(x) === 'Number' && Type(y) === 'String') {
-    return AbstractEqualityComparison(x, X(ToNumber(y)));
+    return yield* AbstractEqualityComparison(x, X(yield* ToNumber(y)));
   }
   if (Type(x) === 'String' && Type(y) === 'Number') {
-    return AbstractEqualityComparison(X(ToNumber(x)), y);
+    return yield* AbstractEqualityComparison(X(yield* ToNumber(x)), y);
   }
   if (Type(x) === 'Boolean') {
-    return AbstractEqualityComparison(X(ToNumber(x)), y);
+    return yield* AbstractEqualityComparison(X(yield* ToNumber(x)), y);
   }
   if (Type(y) === 'Boolean') {
-    return AbstractEqualityComparison(x, X(ToNumber(y)));
+    return yield* AbstractEqualityComparison(x, X(yield* ToNumber(y)));
   }
   if (['String', 'Number', 'Symbol'].includes(Type(x)) && Type(y) === 'Object') {
-    return AbstractEqualityComparison(x, Q(ToPrimitive(y)));
+    return yield* AbstractEqualityComparison(x, Q(yield* ToPrimitive(y)));
   }
   if (Type(x) === 'Object' && ['String', 'Number', 'Symbol'].includes(Type(y))) {
-    return AbstractEqualityComparison(Q(ToPrimitive(x)), y);
+    return yield* AbstractEqualityComparison(Q(yield* ToPrimitive(x)), y);
   }
   return Value.false;
 }
@@ -373,9 +373,7 @@ export function StrictEqualityComparison(x, y) {
 
 // 9.1.6.2 #sec-iscompatiblepropertydescriptor
 export function IsCompatiblePropertyDescriptor(Extensible, Desc, Current) {
-  return ValidateAndApplyPropertyDescriptor(
-    Value.undefined, Value.undefined, Extensible, Desc, Current,
-  );
+  return ValidateAndApplyPropertyDescriptor(Value.undefined, Value.undefined, Extensible, Desc, Current);
 }
 
 // 25.6.1.6 #sec-ispromise

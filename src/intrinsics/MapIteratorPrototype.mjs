@@ -8,7 +8,7 @@ import { Type, Value } from '../value.mjs';
 import { BootstrapPrototype } from './Bootstrap.mjs';
 import { msg } from '../helpers.mjs';
 
-function MapIteratorPrototype_next(args, { thisValue }) {
+function* MapIteratorPrototype_next(args, { thisValue }) {
   const O = thisValue;
   if (Type(O) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'Map Iterator', O));
@@ -20,7 +20,7 @@ function MapIteratorPrototype_next(args, { thisValue }) {
   let index = O.MapNextIndex;
   const itemKind = O.MapIterationKind;
   if (m === Value.undefined) {
-    return CreateIterResultObject(Value.undefined, Value.true);
+    return yield* CreateIterResultObject(Value.undefined, Value.true);
   }
   Assert('MapData' in m);
   const entries = m.MapData;
@@ -37,13 +37,13 @@ function MapIteratorPrototype_next(args, { thisValue }) {
         result = e.Value;
       } else {
         Assert(itemKind === 'key+value');
-        result = CreateArrayFromList([e.Key, e.Value]);
+        result = yield* CreateArrayFromList([e.Key, e.Value]);
       }
-      return CreateIterResultObject(result, Value.false);
+      return yield* CreateIterResultObject(result, Value.false);
     }
   }
   O.Map = Value.undefined;
-  return CreateIterResultObject(Value.undefined, Value.true);
+  return yield* CreateIterResultObject(Value.undefined, Value.true);
 }
 
 export function CreateMapIteratorPrototype(realmRec) {

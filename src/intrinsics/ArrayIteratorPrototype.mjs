@@ -18,7 +18,7 @@ import { Q, X } from '../completion.mjs';
 import { msg } from '../helpers.mjs';
 import { BootstrapPrototype } from './Bootstrap.mjs';
 
-function ArrayIteratorPrototype_next(args, { thisValue }) {
+function* ArrayIteratorPrototype_next(args, { thisValue }) {
   const O = thisValue;
   if (Type(O) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotAnTypeObject', 'Array Iterator', O));
@@ -30,7 +30,7 @@ function ArrayIteratorPrototype_next(args, { thisValue }) {
   }
   const a = O.IteratedObject;
   if (Type(a) === 'Undefined') {
-    return CreateIterResultObject(Value.undefined, Value.true);
+    return yield* CreateIterResultObject(Value.undefined, Value.true);
   }
   const index = O.ArrayIteratorNextIndex;
   const itemKind = O.ArrayIterationKind;
@@ -41,27 +41,27 @@ function ArrayIteratorPrototype_next(args, { thisValue }) {
     }
     len = a.ArrayLength;
   } else {
-    const lenProp = Q(Get(a, new Value('length')));
-    len = Q(ToLength(lenProp));
+    const lenProp = Q(yield* Get(a, new Value('length')));
+    len = Q(yield* ToLength(lenProp));
   }
   if (index >= len.numberValue()) {
     O.IteratedObject = Value.undefined;
-    return CreateIterResultObject(Value.undefined, Value.true);
+    return yield* CreateIterResultObject(Value.undefined, Value.true);
   }
   O.ArrayIteratorNextIndex = index + 1;
   if (itemKind === 'key') {
-    return CreateIterResultObject(new Value(index), Value.false);
+    return yield* CreateIterResultObject(new Value(index), Value.false);
   }
-  const elementKey = X(ToString(new Value(index)));
-  const elementValue = Q(Get(a, elementKey));
+  const elementKey = X(yield* ToString(new Value(index)));
+  const elementValue = Q(yield* Get(a, elementKey));
   let result;
   if (itemKind === 'value') {
     result = elementValue;
   } else {
     Assert(itemKind === 'key+value');
-    result = CreateArrayFromList([new Value(index), elementValue]);
+    result = yield* CreateArrayFromList([new Value(index), elementValue]);
   }
-  return CreateIterResultObject(result, Value.false);
+  return yield* CreateIterResultObject(result, Value.false);
 }
 
 export function CreateArrayIteratorPrototype(realmRec) {

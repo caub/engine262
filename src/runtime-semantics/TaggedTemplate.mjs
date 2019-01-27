@@ -13,7 +13,7 @@ import { IsInTailPosition, TemplateStrings_TemplateLiteral } from '../static-sem
 import { Q, X } from '../completion.mjs';
 
 // 12.2.9.4 #sec-gettemplateobject
-export function GetTemplateObject(templateLiteral) {
+export function* GetTemplateObject(templateLiteral) {
   const rawStrings = TemplateStrings_TemplateLiteral(templateLiteral, true).map(Value);
   const realm = surroundingAgent.currentRealmRecord;
   const templateRegistry = realm.TemplateMap;
@@ -25,11 +25,11 @@ export function GetTemplateObject(templateLiteral) {
   const cookedStrings = TemplateStrings_TemplateLiteral(templateLiteral, false).map((v) => (v === undefined ? Value.undefined : new Value(v)));
   const count = cookedStrings.length;
   Assert(count < (2 ** 32) - 1);
-  const template = X(ArrayCreate(new Value(count)));
-  const rawObj = X(ArrayCreate(new Value(count)));
+  const template = X(yield* ArrayCreate(new Value(count)));
+  const rawObj = X(yield* ArrayCreate(new Value(count)));
   let index = 0;
   while (index < count) {
-    const prop = X(ToString(new Value(index)));
+    const prop = X(yield* ToString(new Value(index)));
     const cookedValue = cookedStrings[index];
     X(template.DefineOwnProperty(prop, Descriptor({
       Value: cookedValue,
@@ -46,14 +46,14 @@ export function GetTemplateObject(templateLiteral) {
     })));
     index += 1;
   }
-  X(SetIntegrityLevel(rawObj, 'frozen'));
+  X(yield* SetIntegrityLevel(rawObj, 'frozen'));
   X(template.DefineOwnProperty(new Value('raw'), Descriptor({
     Value: rawObj,
     Writable: Value.false,
     Enumerable: Value.false,
     Configurable: Value.false,
   })));
-  X(SetIntegrityLevel(template, 'frozen'));
+  X(yield* SetIntegrityLevel(template, 'frozen'));
   templateRegistry.push({ Site: templateLiteral, Array: template });
   return template;
 }
@@ -64,7 +64,7 @@ export function* Evaluate_TaggedTemplate({
   quasi: TemplateLiteral,
 }) {
   const tagRef = yield* Evaluate(Expression);
-  const tagFunc = Q(GetValue(tagRef));
+  const tagFunc = Q(yield* GetValue(tagRef));
   const thisCall = Expression;
   const tailCall = IsInTailPosition(thisCall);
   return Q(yield* EvaluateCall(tagFunc, tagRef, TemplateLiteral, tailCall));

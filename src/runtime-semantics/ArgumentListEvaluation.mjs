@@ -31,7 +31,7 @@ function* SubstitutionEvaluation_TemplateSpans(TemplateSpans) {
   for (let i = 1; i < TemplateSpans.length; i += 2) {
     const Expression = TemplateSpans[i];
     const nextRef = yield* Evaluate(Expression);
-    const next = Q(GetValue(nextRef));
+    const next = Q(yield* GetValue(nextRef));
     preceding.push(next);
   }
   return preceding;
@@ -55,7 +55,7 @@ export function* ArgumentListEvaluation_TemplateLiteral(TemplateLiteral) {
       const siteObj = GetTemplateObject(templateLiteral);
       const [/* TemplateHead */, first/* Expression */, ...rest/* TemplateSpans */] = unrollTemplateLiteral(templateLiteral);
       const firstSubRef = yield* Evaluate(first);
-      const firstSub = Q(GetValue(firstSubRef));
+      const firstSub = Q(yield* GetValue(firstSubRef));
       const restSub = yield* SubstitutionEvaluation_TemplateSpans(rest);
       ReturnIfAbrupt(restSub);
       Assert(Array.isArray(restSub));
@@ -85,21 +85,21 @@ export function* ArgumentListEvaluation_Arguments(Arguments) {
     if (AssignmentExpressionOrSpreadElement.type === 'SpreadElement') {
       const AssignmentExpression = AssignmentExpressionOrSpreadElement.argument;
       const spreadRef = yield* Evaluate(AssignmentExpression);
-      const spreadObj = Q(GetValue(spreadRef));
-      const iteratorRecord = Q(GetIterator(spreadObj));
+      const spreadObj = Q(yield* GetValue(spreadRef));
+      const iteratorRecord = Q(yield* GetIterator(spreadObj));
       while (true) {
-        const next = Q(IteratorStep(iteratorRecord));
+        const next = Q(yield* IteratorStep(iteratorRecord));
         if (next === Value.false) {
           break;
         }
-        const nextArg = Q(IteratorValue(next));
+        const nextArg = Q(yield* IteratorValue(next));
         precedingArgs.push(nextArg);
       }
     } else {
       const AssignmentExpression = AssignmentExpressionOrSpreadElement;
       Assert(isExpression(AssignmentExpression));
       const ref = yield* Evaluate(AssignmentExpression);
-      const arg = Q(GetValue(ref));
+      const arg = Q(yield* GetValue(ref));
       precedingArgs.push(arg);
     }
   }

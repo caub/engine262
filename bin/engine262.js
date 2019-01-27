@@ -70,6 +70,18 @@ function createRealm() {
   return realm;
 }
 
+function runToCompletion(it) {
+  if (!it.next) {
+    return it;
+  }
+  while (true) {
+    const { done, value } = it.next();
+    if (done) {
+      return value;
+    }
+  }
+}
+
 if (process.argv[2]) {
   const realm = createRealm();
   const source = fs.readFileSync(process.argv[2], 'utf8');
@@ -85,7 +97,7 @@ if (process.argv[2]) {
       }
     }
   } else {
-    result = realm.evaluateScript(source);
+    result = runToCompletion(realm.evaluateScript(source));
   }
   if (result instanceof AbruptCompletion) {
     const inspected = inspect(result, realm);
@@ -99,7 +111,7 @@ if (process.argv[2]) {
   repl.start({
     prompt: '> ',
     eval: (cmd, context, filename, callback) => {
-      const result = realm.evaluateScript(cmd);
+      const result = runToCompletion(realm.evaluateScript(cmd));
       callback(null, result);
     },
     completer: () => [],

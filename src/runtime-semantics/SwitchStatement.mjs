@@ -17,8 +17,8 @@ import { BlockDeclarationInstantiation } from './BlockStatement.mjs';
 function* CaseClauseIsSelected(C, input) {
   // Assert: C is an instance of the production CaseClause : `case` Expression : StatementList.
   const exprRef = yield* Evaluate(C.test);
-  const clauseSelector = Q(GetValue(exprRef));
-  return StrictEqualityComparison(input, clauseSelector);
+  const clauseSelector = Q(yield* GetValue(exprRef));
+  return yield* StrictEqualityComparison(input, clauseSelector);
 }
 
 // 13.12.9 #sec-runtime-semantics-caseblockevaluation
@@ -135,7 +135,7 @@ export function* Evaluate_SwitchStatement({
   cases: CaseBlock,
 }) {
   const exprRef = yield* Evaluate(Expression);
-  const switchValue = Q(GetValue(exprRef));
+  const switchValue = Q(yield* GetValue(exprRef));
   const oldEnv = surroundingAgent.runningExecutionContext.LexicalEnvironment;
   const blockEnv = NewDeclarativeEnvironment(oldEnv);
   BlockDeclarationInstantiation(CaseBlock, blockEnv);

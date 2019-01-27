@@ -11,6 +11,12 @@ import {
   wellKnownSymbols,
 } from '../value.mjs';
 import { X } from '../completion.mjs';
+import { unwind } from '../helpers.mjs';
+
+export function setFunctionProps(F, name, length, label) {
+  X(unwind(SetFunctionName(F, name, label)));
+  X(unwind(SetFunctionLength(F, length)));
+}
 
 // 17 #sec-ecmascript-standard-built-in-objects
 export function assignProps(realmRec, obj, props) {
@@ -29,21 +35,19 @@ export function assignProps(realmRec, obj, props) {
       ] = v;
       if (typeof getter === 'function') {
         getter = CreateBuiltinFunction(getter, [], realmRec);
-        X(SetFunctionName(getter, name, new Value('get')));
-        X(SetFunctionLength(getter, new Value(0)));
+        setFunctionProps(getter, name, new Value(0), new Value('get'));
       }
       if (typeof setter === 'function') {
         setter = CreateBuiltinFunction(setter, [], realmRec);
-        X(SetFunctionName(setter, name, new Value('set')));
-        X(SetFunctionLength(setter, new Value(1)));
+        setFunctionProps(setter, name, new Value(1), new Value('set'));
       }
-      X(obj.DefineOwnProperty(name, Descriptor({
+      obj.properties.set(name, Descriptor({
         Get: getter,
         Set: setter,
         Enumerable: Value.false,
         Configurable: Value.true,
         ...descriptor,
-      })));
+      }));
     } else {
       // Every other data property described in clauses 18 through 26 and in
       // Annex B.2 has the attributes { [[Writable]]: true, [[Enumerable]]:
@@ -52,18 +56,17 @@ export function assignProps(realmRec, obj, props) {
       if (typeof v === 'function') {
         Assert(typeof len === 'number');
         value = CreateBuiltinFunction(v, [], realmRec);
-        X(SetFunctionName(value, name));
-        X(SetFunctionLength(value, new Value(len)));
+        setFunctionProps(value, name, new Value(len));
       } else {
         value = v;
       }
-      X(obj.DefineOwnProperty(name, Descriptor({
+      obj.properties.set(name, Descriptor({
         Value: value,
         Writable: Value.true,
         Enumerable: Value.false,
         Configurable: Value.true,
         ...descriptor,
-      })));
+      }));
     }
   }
 }
@@ -75,12 +78,12 @@ export function BootstrapPrototype(realmRec, props, Prototype, stringTag) {
   assignProps(realmRec, proto, props);
 
   if (stringTag !== undefined) {
-    X(proto.DefineOwnProperty(wellKnownSymbols.toStringTag, Descriptor({
+    proto.properties.set(wellKnownSymbols.toStringTag, Descriptor({
       Value: new Value(stringTag),
       Writable: Value.false,
       Enumerable: Value.false,
       Configurable: Value.true,
-    })));
+    }));
   }
 
   return proto;
@@ -89,22 +92,21 @@ export function BootstrapPrototype(realmRec, props, Prototype, stringTag) {
 export function BootstrapConstructor(realmRec, Constructor, name, length, Prototype, props) {
   const cons = CreateBuiltinFunction(Constructor, [], realmRec, undefined, Value.true);
 
-  SetFunctionName(cons, new Value(name));
-  SetFunctionLength(cons, new Value(length));
+  setFunctionProps(cons, new Value(name), new Value(length));
 
-  X(cons.DefineOwnProperty(new Value('prototype'), Descriptor({
+  cons.properties.set(new Value('prototype'), Descriptor({
     Value: Prototype,
     Writable: Value.false,
     Enumerable: Value.false,
     Configurable: Value.false,
-  })));
+  }));
 
-  X(Prototype.DefineOwnProperty(new Value('constructor'), Descriptor({
+  Prototype.properties.set(new Value('constructor'), Descriptor({
     Value: cons,
     Writable: Value.true,
     Enumerable: Value.false,
     Configurable: Value.true,
-  })));
+  }));
 
   assignProps(realmRec, cons, props);
 

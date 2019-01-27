@@ -118,23 +118,23 @@ function* DestructuringAssignmentEvaluation_ArrayAssignmentPattern(ArrayAssignme
     }
   }
 
-  const iteratorRecord = Q(GetIterator(value));
+  const iteratorRecord = Q(yield* GetIterator(value));
   // ArrayAssignmentPattern : `[` `]`
   if (AssignmentElementList.length === 0 && Elision === undefined && AssignmentRestProperty === undefined) {
-    return Q(IteratorClose(iteratorRecord, new NormalCompletion(undefined)));
+    return Q(yield* IteratorClose(iteratorRecord, new NormalCompletion(undefined)));
   }
   let status;
   if (AssignmentElementList.length > 0) {
     status = yield* IteratorDestructuringAssignmentEvaluation_AssignmentElementList(AssignmentElementList, iteratorRecord);
     if (status instanceof AbruptCompletion) {
       if (iteratorRecord.Done === Value.false) {
-        return Q(IteratorClose(iteratorRecord, status));
+        return Q(yield* IteratorClose(iteratorRecord, status));
       }
       return Completion(status);
     }
   }
   if (Elision !== undefined) {
-    status = IteratorDestructuringAssignmentEvaluation_Elision(Elision, iteratorRecord);
+    status = yield* IteratorDestructuringAssignmentEvaluation_Elision(Elision, iteratorRecord);
     if (AssignmentRestProperty === undefined) {
       // ArrayAssignmentPattern : `[` Elision `]`
     } else {
@@ -151,7 +151,7 @@ function* DestructuringAssignmentEvaluation_ArrayAssignmentPattern(ArrayAssignme
     status = yield* IteratorDestructuringAssignmentEvaluation_AssignmentRestProperty(AssignmentRestProperty, iteratorRecord);
   }
   if (iteratorRecord.Done === Value.false) {
-    return Q(IteratorClose(iteratorRecord, status));
+    return Q(yield* IteratorClose(iteratorRecord, status));
   }
   return Completion(status);
 }
@@ -184,19 +184,19 @@ function* PropertyDestructuringAssignmentEvaluation_AssignmentProperty(Assignmen
     }
 
     const P = new Value(IdentifierReference.name);
-    const lref = Q(ResolveBinding(P, undefined, IdentifierReference.strict));
-    let v = Q(GetV(value, P));
+    const lref = Q(yield* ResolveBinding(P, undefined, IdentifierReference.strict));
+    let v = Q(yield* GetV(value, P));
     if (Initializer !== undefined && Type(v) === 'Undefined') {
       const defaultValue = yield* Evaluate(Initializer);
-      v = Q(GetValue(defaultValue));
+      v = Q(yield* GetValue(defaultValue));
       if (IsAnonymousFunctionDefinition(Initializer)) {
-        const hasNameProperty = Q(HasOwnProperty(v, new Value('name')));
+        const hasNameProperty = Q(yield* HasOwnProperty(v, new Value('name')));
         if (hasNameProperty === Value.false) {
-          X(SetFunctionName(v, P));
+          X(yield* SetFunctionName(v, P));
         }
       }
     }
-    Q(PutValue(lref, v));
+    Q(yield* PutValue(lref, v));
     return [P];
   }
 
@@ -218,8 +218,8 @@ function* RestDestructuringAssignmentEvaluation_AssignmentRestProperty(Assignmen
   const lref = yield* Evaluate(DestructuringAssignmentTarget);
   ReturnIfAbrupt(lref);
   const restObj = ObjectCreate(surroundingAgent.intrinsic('%ObjectPrototype%'));
-  Q(CopyDataProperties(restObj, value, excludedNames));
-  return PutValue(lref, restObj);
+  Q(yield* CopyDataProperties(restObj, value, excludedNames));
+  return yield* PutValue(lref, restObj);
 }
 
 // 12.15.5.5 #sec-runtime-semantics-iteratordestructuringassignmentevaluation
@@ -242,7 +242,7 @@ function* IteratorDestructuringAssignmentEvaluation_AssignmentElementList(Assign
 function* IteratorDestructuringAssignmentEvaluation_AssignmentElisionElement(AssignmentElisionElement, iteratorRecord) {
   if (!AssignmentElisionElement) {
     // This is an elision.
-    return IteratorDestructuringAssignmentEvaluation_Elision([AssignmentElisionElement], iteratorRecord);
+    return yield* IteratorDestructuringAssignmentEvaluation_Elision([AssignmentElisionElement], iteratorRecord);
   }
   return yield* IteratorDestructuringAssignmentEvaluation_AssignmentElement(AssignmentElisionElement, iteratorRecord);
 }
@@ -264,7 +264,7 @@ function* IteratorDestructuringAssignmentEvaluation_AssignmentElement(Assignment
   }
   let value;
   if (iteratorRecord.Done === Value.false) {
-    const next = IteratorStep(iteratorRecord);
+    const next = yield* IteratorStep(iteratorRecord);
     if (next instanceof AbruptCompletion) {
       iteratorRecord.Done = Value.true;
     }
@@ -272,7 +272,7 @@ function* IteratorDestructuringAssignmentEvaluation_AssignmentElement(Assignment
     if (next === Value.false) {
       iteratorRecord.Done = Value.true;
     } else {
-      value = IteratorValue(next);
+      value = yield* IteratorValue(next);
       if (value instanceof AbruptCompletion) {
         iteratorRecord.Done = Value.true;
       }
@@ -285,7 +285,7 @@ function* IteratorDestructuringAssignmentEvaluation_AssignmentElement(Assignment
   let v;
   if (Initializer !== undefined && value === Value.undefined) {
     const defaultValue = yield* Evaluate(Initializer);
-    v = Q(GetValue(defaultValue));
+    v = Q(yield* GetValue(defaultValue));
   } else {
     v = value;
   }
@@ -296,22 +296,22 @@ function* IteratorDestructuringAssignmentEvaluation_AssignmentElement(Assignment
   if (Initializer !== undefined
       && IsAnonymousFunctionDefinition(Initializer)
       && IsIdentifierRef(DestructuringAssignmentTarget)) {
-    const hasNameProperty = Q(HasOwnProperty(v, new Value('name')));
+    const hasNameProperty = Q(yield* HasOwnProperty(v, new Value('name')));
     if (hasNameProperty === Value.false) {
-      X(SetFunctionName(v, GetReferencedName(lref)));
+      X(yield* SetFunctionName(v, yield* GetReferencedName(lref)));
     }
   }
-  return Q(PutValue(lref, v));
+  return Q(yield* PutValue(lref, v));
 }
 
 // 12.15.5.5 #sec-runtime-semantics-iteratordestructuringassignmentevaluation
 //   Elision :
 //     `,`
 //     Elision `,`
-export function IteratorDestructuringAssignmentEvaluation_Elision(Elision, iteratorRecord) {
+export function* IteratorDestructuringAssignmentEvaluation_Elision(Elision, iteratorRecord) {
   let remaining = Elision.length;
   while (remaining > 0 && iteratorRecord.Done === Value.false) {
-    const next = IteratorStep(iteratorRecord);
+    const next = yield* IteratorStep(iteratorRecord);
     if (next instanceof AbruptCompletion) {
       iteratorRecord.Done = Value.true;
     }
@@ -333,10 +333,10 @@ function* IteratorDestructuringAssignmentEvaluation_AssignmentRestProperty(Assig
     lref = yield* Evaluate(DestructuringAssignmentTarget);
     ReturnIfAbrupt(lref);
   }
-  const A = X(ArrayCreate(new Value(0)));
+  const A = X(yield* ArrayCreate(new Value(0)));
   let n = 0;
   while (iteratorRecord.Done === Value.false) {
-    const next = IteratorStep(iteratorRecord);
+    const next = yield* IteratorStep(iteratorRecord);
     if (next instanceof AbruptCompletion) {
       iteratorRecord.Done = Value.true;
     }
@@ -344,18 +344,18 @@ function* IteratorDestructuringAssignmentEvaluation_AssignmentRestProperty(Assig
     if (next === Value.false) {
       iteratorRecord.Done = Value.true;
     } else {
-      const nextValue = IteratorValue(next);
+      const nextValue = yield* IteratorValue(next);
       if (nextValue instanceof AbruptCompletion) {
         iteratorRecord.Done = Value.true;
       }
       ReturnIfAbrupt(nextValue);
-      const status = X(CreateDataProperty(A, ToString(new Value(n)), nextValue));
+      const status = X(yield* CreateDataProperty(A, yield* ToString(new Value(n)), nextValue));
       Assert(status === Value.true);
       n += 1;
     }
   }
   if (!isAssignmentPattern(DestructuringAssignmentTarget)) {
-    return Q(PutValue(lref, A));
+    return Q(yield* PutValue(lref, A));
   }
   const nestedAssignmentPattern = DestructuringAssignmentTarget;
   return yield* DestructuringAssignmentEvaluation_AssignmentPattern(nestedAssignmentPattern, A);
@@ -376,11 +376,11 @@ function* KeyedDestructuringAssignmentEvaluation_AssignmentElement(AssignmentEle
     lref = yield* Evaluate(DestructuringAssignmentTarget);
     ReturnIfAbrupt(lref);
   }
-  const v = Q(GetV(value, propertyName));
+  const v = Q(yield* GetV(value, propertyName));
   let rhsValue;
   if (Initializer !== undefined && Type(v) === 'Undefined') {
     const defaultValue = yield* Evaluate(Initializer);
-    rhsValue = Q(GetValue(defaultValue));
+    rhsValue = Q(yield* GetValue(defaultValue));
   } else {
     rhsValue = v;
   }
@@ -391,10 +391,10 @@ function* KeyedDestructuringAssignmentEvaluation_AssignmentElement(AssignmentEle
   if (Initializer !== undefined
       && IsAnonymousFunctionDefinition(Initializer)
       && IsIdentifierRef(DestructuringAssignmentTarget)) {
-    const hasNameProperty = Q(HasOwnProperty(rhsValue, new Value('name')));
+    const hasNameProperty = Q(yield* HasOwnProperty(rhsValue, new Value('name')));
     if (hasNameProperty === Value.false) {
-      X(SetFunctionName(rhsValue, GetReferencedName(lref)));
+      X(yield* SetFunctionName(rhsValue, yield* GetReferencedName(lref)));
     }
   }
-  return Q(PutValue(lref, rhsValue));
+  return Q(yield* PutValue(lref, rhsValue));
 }

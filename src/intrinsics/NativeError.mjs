@@ -29,23 +29,23 @@ export function CreateNativeError(realmRec) {
       ['message', new Value('')],
     ], realmRec.Intrinsics['%ErrorPrototype%']);
 
-    const Constructor = ([message = Value.undefined], { NewTarget }) => {
+    const Constructor = function* NativeErrorConstructor([message = Value.undefined], { NewTarget }) {
       let newTarget;
       if (Type(NewTarget) === 'Undefined') {
         newTarget = surroundingAgent.activeFunctionObject;
       } else {
         newTarget = NewTarget;
       }
-      const O = Q(OrdinaryCreateFromConstructor(newTarget, `%${name}Prototype%`, ['ErrorData']));
+      const O = Q(yield* OrdinaryCreateFromConstructor(newTarget, `%${name}Prototype%`, ['ErrorData']));
       if (Type(message) !== 'Undefined') {
-        const msg = Q(ToString(message));
+        const msg = Q(yield* ToString(message));
         const msgDesc = Descriptor({
           Value: msg,
           Writable: Value.true,
           Enumerable: Value.false,
           Configurable: Value.true,
         });
-        X(DefinePropertyOrThrow(O, new Value('message'), msgDesc));
+        X(yield* DefinePropertyOrThrow(O, new Value('message'), msgDesc));
       }
 
       X(captureStack(O)); // non-spec

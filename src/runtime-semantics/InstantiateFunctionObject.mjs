@@ -25,16 +25,16 @@ import { Descriptor, Value } from '../value.mjs';
 //   FunctionDeclaration :
 //     `function` BindingIdentifier `(` FormalParameters `)` `{` FunctionBody `}`
 //     `function` `(` FormalParameters `)` `{` FunctionBody `}`
-export function InstantiateFunctionObject_FunctionDeclaration(FunctionDeclaration, scope) {
+export function* InstantiateFunctionObject_FunctionDeclaration(FunctionDeclaration, scope) {
   const {
     id: BindingIdentifier,
     params: FormalParameters,
   } = FunctionDeclaration;
   const strict = isStrictModeCode(FunctionDeclaration);
   const name = new Value(BindingIdentifier ? BindingIdentifier.name : 'default');
-  const F = X(FunctionCreate('Normal', FormalParameters, FunctionDeclaration, scope, strict));
-  MakeConstructor(F);
-  SetFunctionName(F, name);
+  const F = X(yield* FunctionCreate('Normal', FormalParameters, FunctionDeclaration, scope, strict));
+  yield* MakeConstructor(F);
+  yield* SetFunctionName(F, name);
   F.SourceText = sourceTextMatchedBy(FunctionDeclaration);
   return F;
 }
@@ -43,55 +43,55 @@ export function InstantiateFunctionObject_FunctionDeclaration(FunctionDeclaratio
 //   GeneratorDeclaration :
 //     `function` `*` BindingIdentifier `(` FormalParameters `)` `{` GeneratorBody `}`
 //     `function` `*` `(` FormalParameters `)` `{` GeneratorBody `}`
-export function InstantiateFunctionObject_GeneratorDeclaration(GeneratorDeclaration, scope) {
+export function* InstantiateFunctionObject_GeneratorDeclaration(GeneratorDeclaration, scope) {
   const {
     id: BindingIdentifier,
     params: FormalParameters,
   } = GeneratorDeclaration;
   const strict = isStrictModeCode(GeneratorDeclaration);
   const name = new Value(BindingIdentifier ? BindingIdentifier.name : 'default');
-  const F = X(GeneratorFunctionCreate('Normal', FormalParameters, GeneratorDeclaration, scope, strict));
+  const F = X(yield* GeneratorFunctionCreate('Normal', FormalParameters, GeneratorDeclaration, scope, strict));
   const prototype = X(ObjectCreate(surroundingAgent.intrinsic('%GeneratorPrototype%')));
-  X(DefinePropertyOrThrow(F, new Value('prototype'), Descriptor({
+  X(yield* DefinePropertyOrThrow(F, new Value('prototype'), Descriptor({
     Value: prototype,
     Writable: Value.true,
     Enumerable: Value.false,
     Configurable: Value.false,
   })));
-  SetFunctionName(F, name);
+  yield* SetFunctionName(F, name);
   F.SourceText = sourceTextMatchedBy(GeneratorDeclaration);
   return F;
 }
 
-export function InstantiateFunctionObject_AsyncFunctionDeclaration(AsyncFunctionDeclaration, scope) {
+export function* InstantiateFunctionObject_AsyncFunctionDeclaration(AsyncFunctionDeclaration, scope) {
   const {
     id: BindingIdentifier,
     params: FormalParameters,
   } = AsyncFunctionDeclaration;
   const strict = isStrictModeCode(AsyncFunctionDeclaration);
   const name = new Value(BindingIdentifier ? BindingIdentifier.name : 'default');
-  const F = X(AsyncFunctionCreate('Normal', FormalParameters, AsyncFunctionDeclaration, scope, strict));
-  SetFunctionName(F, name);
+  const F = X(yield* AsyncFunctionCreate('Normal', FormalParameters, AsyncFunctionDeclaration, scope, strict));
+  yield* SetFunctionName(F, name);
   F.SourceText = sourceTextMatchedBy(AsyncFunctionDeclaration);
   return F;
 }
 
-export function InstantiateFunctionObject_AsyncGeneratorDeclaration(AsyncGeneratorDeclaration, scope) {
+export function* InstantiateFunctionObject_AsyncGeneratorDeclaration(AsyncGeneratorDeclaration, scope) {
   const {
     id: BindingIdentifier,
     params: FormalParameters,
   } = AsyncGeneratorDeclaration;
   const strict = isStrictModeCode(AsyncGeneratorDeclaration);
   const name = new Value(BindingIdentifier ? BindingIdentifier.name : 'default');
-  const F = X(AsyncGeneratorFunctionCreate('Normal', FormalParameters, AsyncGeneratorDeclaration, scope, strict));
+  const F = X(yield* AsyncGeneratorFunctionCreate('Normal', FormalParameters, AsyncGeneratorDeclaration, scope, strict));
   const prototype = X(ObjectCreate(surroundingAgent.intrinsic('%AsyncGeneratorPrototype%')));
-  X(DefinePropertyOrThrow(F, new Value('prototype'), Descriptor({
+  X(yield* DefinePropertyOrThrow(F, new Value('prototype'), Descriptor({
     Value: prototype,
     Writable: Value.true,
     Enumerable: Value.false,
     Configurable: Value.false,
   })));
-  SetFunctionName(F, name);
+  yield* SetFunctionName(F, name);
   F.SourceText = sourceTextMatchedBy(AsyncGeneratorDeclaration);
   return F;
 }

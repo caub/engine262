@@ -12,22 +12,22 @@ import {
 import { Q } from '../completion.mjs';
 import { BootstrapPrototype } from './Bootstrap.mjs';
 
-function ErrorProto_toString(args, { thisValue }) {
+function* ErrorProto_toString(args, { thisValue }) {
   const O = thisValue;
   if (Type(O) !== 'Object') {
     return surroundingAgent.Throw('TypeError');
   }
-  let name = Q(Get(O, new Value('name')));
+  let name = Q(yield* Get(O, new Value('name')));
   if (Type(name) === 'Undefined') {
     name = new Value('Error');
   } else {
-    name = Q(ToString(name));
+    name = Q(yield* ToString(name));
   }
-  let msg = Q(Get(O, new Value('message')));
+  let msg = Q(yield* Get(O, new Value('message')));
   if (Type(msg) === 'Undefined') {
     msg = new Value('');
   } else {
-    msg = Q(ToString(msg));
+    msg = Q(yield* ToString(msg));
   }
   if (name.stringValue() === '') {
     return msg;

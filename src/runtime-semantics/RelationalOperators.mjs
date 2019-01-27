@@ -21,18 +21,18 @@ import { Q, ReturnIfAbrupt } from '../completion.mjs';
 import { Evaluate } from '../evaluator.mjs';
 import { OutOfRange } from '../helpers.mjs';
 
-export function InstanceofOperator(V, target) {
+export function* InstanceofOperator(V, target) {
   if (Type(target) !== 'Object') {
     return surroundingAgent.Throw('TypeError');
   }
-  const instOfHandler = Q(GetMethod(target, wellKnownSymbols.hasInstance));
+  const instOfHandler = Q(yield* GetMethod(target, wellKnownSymbols.hasInstance));
   if (Type(instOfHandler) !== 'Undefined') {
-    return ToBoolean(Q(Call(instOfHandler, target, [V])));
+    return ToBoolean(Q(yield* Call(instOfHandler, target, [V])));
   }
   if (IsCallable(target) === Value.false) {
     return surroundingAgent.Throw('TypeError');
   }
-  return Q(OrdinaryHasInstance(target, V));
+  return Q(yield* OrdinaryHasInstance(target, V));
 }
 
 export function* Evaluate_RelationalExpression({
@@ -41,13 +41,13 @@ export function* Evaluate_RelationalExpression({
   operator,
 }) {
   const lref = yield* Evaluate(RelationalExpression);
-  const lval = Q(GetValue(lref));
+  const lval = Q(yield* GetValue(lref));
   const rref = yield* Evaluate(ShiftExpression);
-  const rval = Q(GetValue(rref));
+  const rval = Q(yield* GetValue(rref));
 
   switch (operator) {
     case '<': {
-      const r = AbstractRelationalComparison(lval, rval);
+      const r = yield* AbstractRelationalComparison(lval, rval);
       ReturnIfAbrupt(r);
       if (Type(r) === 'Undefined') {
         return Value.false;
@@ -55,7 +55,7 @@ export function* Evaluate_RelationalExpression({
       return r;
     }
     case '>': {
-      const r = AbstractRelationalComparison(rval, lval, false);
+      const r = yield* AbstractRelationalComparison(rval, lval, false);
       ReturnIfAbrupt(r);
       if (Type(r) === 'Undefined') {
         return Value.false;
@@ -63,7 +63,7 @@ export function* Evaluate_RelationalExpression({
       return r;
     }
     case '<=': {
-      const r = AbstractRelationalComparison(rval, lval, false);
+      const r = yield* AbstractRelationalComparison(rval, lval, false);
       ReturnIfAbrupt(r);
       if (Type(r) === 'Undefined' || r === Value.true) {
         return Value.false;
@@ -71,7 +71,7 @@ export function* Evaluate_RelationalExpression({
       return Value.true;
     }
     case '>=': {
-      const r = AbstractRelationalComparison(lval, rval);
+      const r = yield* AbstractRelationalComparison(lval, rval);
       ReturnIfAbrupt(r);
       if (Type(r) === 'Undefined' || r === Value.true) {
         return Value.false;
@@ -80,13 +80,13 @@ export function* Evaluate_RelationalExpression({
     }
 
     case 'instanceof':
-      return Q(InstanceofOperator(lval, rval));
+      return Q(yield* InstanceofOperator(lval, rval));
 
     case 'in':
       if (Type(rval) !== 'Object') {
         return surroundingAgent.Throw('TypeError', 'cannot check for property in non-object');
       }
-      return Q(HasProperty(rval, ToPropertyKey(lval)));
+      return Q(yield* HasProperty(rval, yield* ToPropertyKey(lval)));
 
     default:
       throw new OutOfRange('Evaluate_RelationalExpression', operator);

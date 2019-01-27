@@ -57,71 +57,71 @@ export function IsGenericDescriptor(Desc) {
 }
 
 // 6.2.5.4 #sec-frompropertydescriptor
-export function FromPropertyDescriptor(Desc) {
+export function* FromPropertyDescriptor(Desc) {
   if (Type(Desc) === 'Undefined') {
     return Value.undefined;
   }
   const obj = ObjectCreate(surroundingAgent.intrinsic('%ObjectPrototype%'));
   if (Desc.Value !== undefined) {
-    X(CreateDataProperty(obj, new Value('value'), Desc.Value));
+    X(yield* CreateDataProperty(obj, new Value('value'), Desc.Value));
   }
   if (Desc.Writable !== undefined) {
-    X(CreateDataProperty(obj, new Value('writable'), Desc.Writable));
+    X(yield* CreateDataProperty(obj, new Value('writable'), Desc.Writable));
   }
   if (Desc.Get !== undefined) {
-    X(CreateDataProperty(obj, new Value('get'), Desc.Get));
+    X(yield* CreateDataProperty(obj, new Value('get'), Desc.Get));
   }
   if (Desc.Set !== undefined) {
-    X(CreateDataProperty(obj, new Value('set'), Desc.Set));
+    X(yield* CreateDataProperty(obj, new Value('set'), Desc.Set));
   }
   if (Desc.Enumerable !== undefined) {
-    X(CreateDataProperty(obj, new Value('enumerable'), Desc.Enumerable));
+    X(yield* CreateDataProperty(obj, new Value('enumerable'), Desc.Enumerable));
   }
   if (Desc.Configurable !== undefined) {
-    X(CreateDataProperty(obj, new Value('configurable'), Desc.Configurable));
+    X(yield* CreateDataProperty(obj, new Value('configurable'), Desc.Configurable));
   }
   // Assert: All of the above CreateDataProperty operations return true.
   return obj;
 }
 
 // 6.2.5.5 #sec-topropertydescriptor
-export function ToPropertyDescriptor(Obj) {
+export function* ToPropertyDescriptor(Obj) {
   if (Type(Obj) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotAnObject', Obj));
   }
 
   const desc = Descriptor({});
-  const hasEnumerable = Q(HasProperty(Obj, new Value('enumerable')));
+  const hasEnumerable = Q(yield* HasProperty(Obj, new Value('enumerable')));
   if (hasEnumerable === Value.true) {
-    const enumerable = ToBoolean(Q(Get(Obj, new Value('enumerable'))));
+    const enumerable = ToBoolean(Q(yield* Get(Obj, new Value('enumerable'))));
     desc.Enumerable = enumerable;
   }
-  const hasConfigurable = Q(HasProperty(Obj, new Value('configurable')));
+  const hasConfigurable = Q(yield* HasProperty(Obj, new Value('configurable')));
   if (hasConfigurable === Value.true) {
-    const conf = ToBoolean(Q(Get(Obj, new Value('configurable'))));
+    const conf = ToBoolean(Q(yield* Get(Obj, new Value('configurable'))));
     desc.Configurable = conf;
   }
-  const hasValue = Q(HasProperty(Obj, new Value('value')));
+  const hasValue = Q(yield* HasProperty(Obj, new Value('value')));
   if (hasValue === Value.true) {
-    const value = Q(Get(Obj, new Value('value')));
+    const value = Q(yield* Get(Obj, new Value('value')));
     desc.Value = value;
   }
-  const hasWritable = Q(HasProperty(Obj, new Value('writable')));
+  const hasWritable = Q(yield* HasProperty(Obj, new Value('writable')));
   if (hasWritable === Value.true) {
-    const writable = ToBoolean(Q(Get(Obj, new Value('writable'))));
+    const writable = ToBoolean(Q(yield* Get(Obj, new Value('writable'))));
     desc.Writable = writable;
   }
-  const hasGet = Q(HasProperty(Obj, new Value('get')));
+  const hasGet = Q(yield* HasProperty(Obj, new Value('get')));
   if (hasGet === Value.true) {
-    const getter = Q(Get(Obj, new Value('get')));
+    const getter = Q(yield* Get(Obj, new Value('get')));
     if (IsCallable(getter) === Value.false && Type(getter) !== 'Undefined') {
       return surroundingAgent.Throw('TypeError', msg('NotAFunction', getter));
     }
     desc.Get = getter;
   }
-  const hasSet = Q(HasProperty(Obj, new Value('set')));
+  const hasSet = Q(yield* HasProperty(Obj, new Value('set')));
   if (hasSet === Value.true) {
-    const setter = Q(Get(Obj, new Value('set')));
+    const setter = Q(yield* Get(Obj, new Value('set')));
     if (IsCallable(setter) === Value.false && Type(setter) !== 'Undefined') {
       return surroundingAgent.Throw('TypeError', msg('NotAFunction', setter));
     }
@@ -136,7 +136,7 @@ export function ToPropertyDescriptor(Obj) {
 }
 
 // 6.2.5.6 #sec-completepropertydescriptor
-export function CompletePropertyDescriptor(Desc) {
+export function* CompletePropertyDescriptor(Desc) {
   Assert(Type(Desc) === 'Descriptor');
   const like = Descriptor({
     Value: Value.undefined,
@@ -146,7 +146,7 @@ export function CompletePropertyDescriptor(Desc) {
     Enumerable: false,
     Configurable: false,
   });
-  if (IsGenericDescriptor(Desc) || IsDataDescriptor(Desc)) {
+  if ((yield* IsGenericDescriptor(Desc)) || (yield* IsDataDescriptor(Desc))) {
     if (Desc.Value === undefined) {
       Desc.Value = like.Value;
     }

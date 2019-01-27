@@ -35,20 +35,20 @@ import { OutOfRange } from '../helpers.mjs';
 function* Evaluate_LexicalBinding_BindingIdentifier(LexicalBinding) {
   const { id: BindingIdentifier, init: Initializer, strict } = LexicalBinding;
   const bindingId = new Value(BindingIdentifier.name);
-  const lhs = X(ResolveBinding(bindingId, undefined, strict));
+  const lhs = X(yield* ResolveBinding(bindingId, undefined, strict));
 
   if (Initializer) {
     const rhs = yield* Evaluate(Initializer);
-    const value = Q(GetValue(rhs));
+    const value = Q(yield* GetValue(rhs));
     if (IsAnonymousFunctionDefinition(Initializer)) {
-      const hasNameProperty = Q(HasOwnProperty(value, new Value('name')));
+      const hasNameProperty = Q(yield* HasOwnProperty(value, new Value('name')));
       if (hasNameProperty === Value.false) {
-        SetFunctionName(value, bindingId);
+        yield* SetFunctionName(value, bindingId);
       }
     }
-    return InitializeReferencedBinding(lhs, value);
+    return yield* InitializeReferencedBinding(lhs, value);
   } else {
-    return InitializeReferencedBinding(lhs, Value.undefined);
+    return yield* InitializeReferencedBinding(lhs, Value.undefined);
   }
 }
 
@@ -57,7 +57,7 @@ function* Evaluate_LexicalBinding_BindingIdentifier(LexicalBinding) {
 function* Evaluate_LexicalBinding_BindingPattern(LexicalBinding) {
   const { id: BindingPattern, init: Initializer } = LexicalBinding;
   const rhs = yield* Evaluate(Initializer);
-  const value = Q(GetValue(rhs));
+  const value = Q(yield* GetValue(rhs));
   const env = surroundingAgent.runningExecutionContext.LexicalEnvironment;
   return yield* BindingInitialization_BindingPattern(BindingPattern, value, env);
 }

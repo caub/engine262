@@ -10,7 +10,7 @@ import {
   Value,
   wellKnownSymbols,
 } from '../value.mjs';
-import { Q, X } from '../completion.mjs';
+import { Q } from '../completion.mjs';
 import { BootstrapPrototype } from './Bootstrap.mjs';
 
 // 23.2.5.1 #sec-createsetiterator
@@ -32,7 +32,7 @@ function CreateSetIterator(set, kind) {
   return iterator;
 }
 
-function SetProto_add([value = Value.undefined], { thisValue }) {
+function* SetProto_add([value = Value.undefined], { thisValue }) {
   const S = thisValue;
   if (Type(S) !== 'Object') {
     return surroundingAgent.Throw('TypeError');
@@ -68,7 +68,7 @@ function SetProto_clear(args, { thisValue }) {
   return Value.undefined;
 }
 
-function SetProto_delete([value = Value.undefined], { thisValue }) {
+function* SetProto_delete([value = Value.undefined], { thisValue }) {
   const S = thisValue;
   if (Type(S) !== 'Object') {
     return surroundingAgent.Throw('TypeError');
@@ -92,7 +92,7 @@ function SetProto_entries(args, { thisValue }) {
   return Q(CreateSetIterator(S, 'key+value'));
 }
 
-function SetProto_forEach([callbackfn = Value.undefined, thisArg], { thisValue }) {
+function* SetProto_forEach([callbackfn = Value.undefined, thisArg], { thisValue }) {
   const S = thisValue;
   if (Type(S) !== 'Object') {
     return surroundingAgent.Throw('TypeError');
@@ -112,13 +112,13 @@ function SetProto_forEach([callbackfn = Value.undefined, thisArg], { thisValue }
   const entries = S.SetData;
   for (const e of entries) {
     if (e !== undefined) {
-      Q(Call(callbackfn, T, [e, e, S]));
+      Q(yield* Call(callbackfn, T, [e, e, S]));
     }
   }
   return Value.undefined;
 }
 
-function SetProto_has([value = Value.undefined], { thisValue }) {
+function* SetProto_has([value = Value.undefined], { thisValue }) {
   const S = thisValue;
   if (Type(S) !== 'Object') {
     return surroundingAgent.Throw('TypeError');
@@ -170,9 +170,9 @@ export function CreateSetPrototype(realmRec) {
     ['values', SetProto_values, 0],
   ], realmRec.Intrinsics['%ObjectPrototype%'], 'Set');
 
-  const valuesFunc = X(proto.GetOwnProperty(new Value('values')));
-  X(proto.DefineOwnProperty(new Value('keys'), valuesFunc));
-  X(proto.DefineOwnProperty(wellKnownSymbols.iterator, valuesFunc));
+  const valuesFunc = proto.properties.get(new Value('values'));
+  proto.properties.set(new Value('keys'), valuesFunc);
+  proto.properties.set(wellKnownSymbols.iterator, valuesFunc);
 
   realmRec.Intrinsics['%SetPrototype%'] = proto;
 }

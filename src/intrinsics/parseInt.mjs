@@ -1,14 +1,13 @@
 import {
   Assert,
   CreateBuiltinFunction,
-  SetFunctionName,
-  SetFunctionLength,
   ToInt32,
   ToString,
 } from '../abstract-ops/all.mjs';
-import { Q, X } from '../completion.mjs';
+import { Q } from '../completion.mjs';
 import { Value } from '../value.mjs';
 import { searchNotStrWhiteSpaceChar } from '../grammar/numeric-string.mjs';
+import { setFunctionProps } from './Bootstrap.mjs';
 
 function digitToNumber(digit) {
   digit = digit.charCodeAt(0);
@@ -51,8 +50,8 @@ function searchNotRadixDigit(str, R) {
   return str.length;
 }
 
-function ParseInt([string = Value.undefined, radix = Value.undefined]) {
-  const inputString = Q(ToString(string)).stringValue();
+function* ParseInt([string = Value.undefined, radix = Value.undefined]) {
+  const inputString = Q(yield* ToString(string)).stringValue();
   let S = inputString.slice(searchNotStrWhiteSpaceChar(inputString));
   let sign = 1;
   if (S !== '' && S[0] === '\x2D') {
@@ -62,7 +61,7 @@ function ParseInt([string = Value.undefined, radix = Value.undefined]) {
     S = S.slice(1);
   }
 
-  let R = Q(ToInt32(radix)).numberValue();
+  let R = Q(yield* ToInt32(radix)).numberValue();
   let stripPrefix = true;
   if (R !== 0) {
     if (R < 2 || R > 36) {
@@ -97,7 +96,6 @@ function ParseInt([string = Value.undefined, radix = Value.undefined]) {
 
 export function CreateParseInt(realmRec) {
   const fn = CreateBuiltinFunction(ParseInt, [], realmRec);
-  X(SetFunctionName(fn, new Value('parseInt')));
-  X(SetFunctionLength(fn, new Value(2)));
+  setFunctionProps(fn, new Value('parseInt'), new Value(2));
   realmRec.Intrinsics['%parseInt%'] = fn;
 }

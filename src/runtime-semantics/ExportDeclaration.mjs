@@ -34,9 +34,9 @@ export function* Evaluate_ExportDeclaration(ExportDeclaration) {
       ReturnIfAbrupt(value);
       const className = BoundNames_ClassDeclaration(ClassDeclaration)[0];
       if (className === '*default*') {
-        const hasNameProperty = Q(HasOwnProperty(value, new Value('name')));
+        const hasNameProperty = Q(yield* HasOwnProperty(value, new Value('name')));
         if (hasNameProperty === Value.false) {
-          SetFunctionName(value, new Value('default'));
+          yield* SetFunctionName(value, new Value('default'));
         }
         const env = surroundingAgent.runningExecutionContext.LexicalEnvironment;
         Q(InitializeBoundName(new Value('*default*'), value, env));
@@ -47,11 +47,11 @@ export function* Evaluate_ExportDeclaration(ExportDeclaration) {
       const AssignmentExpression = ExportDeclaration.declaration;
 
       const rhs = yield* Evaluate(AssignmentExpression);
-      const value = Q(GetValue(rhs));
+      const value = Q(yield* GetValue(rhs));
       if (IsAnonymousFunctionDefinition(AssignmentExpression)) {
-        const hasNameProperty = Q(HasOwnProperty(value, new Value('name')));
+        const hasNameProperty = Q(yield* HasOwnProperty(value, new Value('name')));
         if (hasNameProperty === Value.false) {
-          SetFunctionName(value, new Value('default'));
+          yield* SetFunctionName(value, new Value('default'));
         }
       }
       const env = surroundingAgent.runningExecutionContext.LexicalEnvironment;

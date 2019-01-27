@@ -12,12 +12,12 @@ import { Q } from '../completion.mjs';
 import { BootstrapConstructor } from './Bootstrap.mjs';
 
 // 24.1.2 #sec-arraybuffer-constructor
-function ArrayBufferConstructor([length = Value.undefined], { NewTarget }) {
+function* ArrayBufferConstructor([length = Value.undefined], { NewTarget }) {
   if (Type(NewTarget) === 'Undefined') {
     return surroundingAgent.Throw('TypeError', 'ArrayBuffer constructor requires new');
   }
-  const byteLength = Q(ToIndex(length));
-  return Q(AllocateArrayBuffer(NewTarget, byteLength));
+  const byteLength = Q(yield* ToIndex(length));
+  return Q(yield* AllocateArrayBuffer(NewTarget, byteLength));
 }
 
 // 24.1.3.1 #sec-arraybuffer.isview

@@ -12,6 +12,6 @@ import {
 // ThrowStatement : throw Expression ;
 export function* Evaluate_ThrowStatement(Expression) {
   const exprRef = yield* Evaluate(Expression);
-  const exprValue = Q(GetValue(exprRef));
+  const exprValue = Q(yield* GetValue(exprRef));
   return new ThrowCompletion(exprValue);
 }

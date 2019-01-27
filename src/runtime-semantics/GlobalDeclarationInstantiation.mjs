@@ -37,7 +37,7 @@ import {
 import { msg } from '../helpers.mjs';
 
 // 15.1.11 #sec-globaldeclarationinstantiation
-export function GlobalDeclarationInstantiation(script, env) {
+export function* GlobalDeclarationInstantiation(script, env) {
   const envRec = env.EnvironmentRecord;
   Assert(envRec instanceof EnvironmentRecord);
 
@@ -48,17 +48,17 @@ export function GlobalDeclarationInstantiation(script, env) {
     if (envRec.HasVarDeclaration(name) === Value.true) {
       return surroundingAgent.Throw('SyntaxError', msg('AlreadyDeclared', name));
     }
-    if (envRec.HasLexicalDeclaration(name) === Value.true) {
+    if ((yield* envRec.HasLexicalDeclaration(name)) === Value.true) {
       return surroundingAgent.Throw('SyntaxError', msg('AlreadyDeclared', name));
     }
-    const hasRestrictedGlobal = Q(envRec.HasRestrictedGlobalProperty(name));
+    const hasRestrictedGlobal = Q(yield* envRec.HasRestrictedGlobalProperty(name));
     if (hasRestrictedGlobal === Value.true) {
       return surroundingAgent.Throw('SyntaxError', msg('AlreadyDeclared', name));
     }
   }
 
   for (const name of varNames) {
-    if (envRec.HasLexicalDeclaration(name) === Value.true) {
+    if ((yield* envRec.HasLexicalDeclaration(name)) === Value.true) {
       return surroundingAgent.Throw('SyntaxError', msg('AlreadyDeclared', name));
     }
   }
@@ -74,7 +74,7 @@ export function GlobalDeclarationInstantiation(script, env) {
              || isAsyncFunctionDeclaration(d) || isAsyncGeneratorDeclaration(d));
       const fn = BoundNames_FunctionDeclaration(d)[0];
       if (!declaredFunctionNames.includes(fn)) {
-        const fnDefinable = Q(envRec.CanDeclareGlobalFunction(new Value(fn)));
+        const fnDefinable = Q(yield* envRec.CanDeclareGlobalFunction(new Value(fn)));
         if (fnDefinable === Value.false) {
           return surroundingAgent.Throw('TypeError');
         }
@@ -98,7 +98,7 @@ export function GlobalDeclarationInstantiation(script, env) {
     if (boundNames !== undefined) {
       for (const vn of boundNames.map(Value)) {
         if (!declaredFunctionNames.includes(vn)) {
-          const vnDefinable = Q(envRec.CanDeclareGlobalVar(vn));
+          const vnDefinable = Q(yield* envRec.CanDeclareGlobalVar(vn));
           if (vnDefinable === Value.false) {
             return surroundingAgent.Throw('TypeError');
           }
@@ -117,21 +117,21 @@ export function GlobalDeclarationInstantiation(script, env) {
   for (const d of lexDeclarations) {
     for (const dn of BoundNames_Declaration(d).map(Value)) {
       if (IsConstantDeclaration(d)) {
-        Q(envRec.CreateImmutableBinding(dn, Value.true));
+        Q(yield* envRec.CreateImmutableBinding(dn, Value.true));
       } else {
-        Q(envRec.CreateMutableBinding(dn, Value.false));
+        Q(yield* envRec.CreateMutableBinding(dn, Value.false));
       }
     }
   }
 
   for (const f of functionsToInitialize) {
     const fn = new Value(BoundNames_FunctionDeclaration(f)[0]);
-    const fo = InstantiateFunctionObject(f, env);
-    Q(envRec.CreateGlobalFunctionBinding(fn, fo, Value.false));
+    const fo = yield* InstantiateFunctionObject(f, env);
+    Q(yield* envRec.CreateGlobalFunctionBinding(fn, fo, Value.false));
   }
 
   for (const vn of declaredVarNames) {
-    Q(envRec.CreateGlobalVarBinding(vn, Value.false));
+    Q(yield* envRec.CreateGlobalVarBinding(vn, Value.false));
   }
 
   return new NormalCompletion(undefined);

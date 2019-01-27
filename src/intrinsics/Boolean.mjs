@@ -6,12 +6,12 @@ import { Type, Value } from '../value.mjs';
 import { Q } from '../completion.mjs';
 import { BootstrapConstructor } from './Bootstrap.mjs';
 
-function BooleanConstructor([value = Value.undefined], { NewTarget }) {
+function* BooleanConstructor([value = Value.undefined], { NewTarget }) {
   const b = ToBoolean(value);
   if (Type(NewTarget) === 'Undefined') {
     return b;
   }
-  const O = Q(OrdinaryCreateFromConstructor(NewTarget, '%BooleanPrototype%', ['BooleanData']));
+  const O = Q(yield* OrdinaryCreateFromConstructor(NewTarget, '%BooleanPrototype%', ['BooleanData']));
   O.BooleanData = b;
   return O;
 }

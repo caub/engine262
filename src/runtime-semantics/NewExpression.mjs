@@ -17,14 +17,14 @@ function* EvaluateNew(constructExpr, args = []) {
   Assert(isActualNewExpression(constructExpr));
   Assert(Array.isArray(args));
   const ref = yield* Evaluate(constructExpr.callee);
-  const constructor = Q(GetValue(ref));
+  const constructor = Q(yield* GetValue(ref));
   // We convert empty to [] as part of the default parameter.
   const argList = yield* ArgumentListEvaluation(args);
   ReturnIfAbrupt(argList);
   if (IsConstructor(constructor) === Value.false) {
     return surroundingAgent.Throw('TypeError', msg('NotAConstructor', constructor));
   }
-  return Q(Construct(constructor, argList));
+  return Q(yield* Construct(constructor, argList));
 }
 
 // 12.3.3.1 #sec-new-operator-runtime-semantics-evaluation

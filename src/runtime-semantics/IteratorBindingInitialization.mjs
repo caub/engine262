@@ -86,7 +86,7 @@ export function* IteratorBindingInitialization_ArrayBindingPattern(ArrayBindingP
     status = Q(yield* IteratorBindingInitialization_BindingElementList(BindingElementList, iteratorRecord, environment));
   }
   if (Elision !== undefined) {
-    status = Q(IteratorDestructuringAssignmentEvaluation_Elision(Elision, iteratorRecord));
+    status = Q(yield* IteratorDestructuringAssignmentEvaluation_Elision(Elision, iteratorRecord));
   }
   if (BindingRestElement !== undefined) {
     status = Q(yield* IteratorBindingInitialization_BindingRestElement(BindingRestElement, iteratorRecord, environment));
@@ -115,7 +115,7 @@ function* IteratorBindingInitialization_BindingElement_BindingPattern(BindingEle
   }
   let v;
   if (iteratorRecord.Done === Value.false) {
-    const next = IteratorStep(iteratorRecord);
+    const next = yield* IteratorStep(iteratorRecord);
     if (next instanceof AbruptCompletion) {
       iteratorRecord.Done = Value.true;
     }
@@ -123,7 +123,7 @@ function* IteratorBindingInitialization_BindingElement_BindingPattern(BindingEle
     if (next === Value.false) {
       iteratorRecord.Done = Value.true;
     } else {
-      v = IteratorValue(next);
+      v = yield* IteratorValue(next);
       if (v instanceof AbruptCompletion) {
         iteratorRecord.Done = Value.true;
       }
@@ -135,7 +135,7 @@ function* IteratorBindingInitialization_BindingElement_BindingPattern(BindingEle
   }
   if (Initializer !== undefined && Type(v) === 'Undefined') {
     const defaultValue = yield* Evaluate(Initializer);
-    v = Q(GetValue(defaultValue));
+    v = Q(yield* GetValue(defaultValue));
   }
   return yield* BindingInitialization_BindingPattern(BindingPattern, v, environment);
 }
@@ -158,10 +158,10 @@ function* IteratorBindingInitialization_SingleNameBinding(SingleNameBinding, ite
       throw new OutOfRange('IteratorBindingInitialization_SingleNameBinding', SingleNameBinding);
   }
   const bindingId = new Value(BindingIdentifier.name);
-  const lhs = Q(ResolveBinding(bindingId, environment, BindingIdentifier.strict));
+  const lhs = Q(yield* ResolveBinding(bindingId, environment, BindingIdentifier.strict));
   let v;
   if (iteratorRecord.Done === Value.false) {
-    const next = IteratorStep(iteratorRecord);
+    const next = yield* IteratorStep(iteratorRecord);
     if (next instanceof AbruptCompletion) {
       iteratorRecord.Done = Value.true;
     }
@@ -169,7 +169,7 @@ function* IteratorBindingInitialization_SingleNameBinding(SingleNameBinding, ite
     if (next === Value.false) {
       iteratorRecord.Done = Value.true;
     } else {
-      v = IteratorValue(next);
+      v = yield* IteratorValue(next);
       if (v instanceof AbruptCompletion) {
         iteratorRecord.Done = Value.true;
       }
@@ -181,18 +181,18 @@ function* IteratorBindingInitialization_SingleNameBinding(SingleNameBinding, ite
   }
   if (Initializer !== undefined && Type(v) === 'Undefined') {
     const defaultValue = yield* Evaluate(Initializer);
-    v = Q(GetValue(defaultValue));
+    v = Q(yield* GetValue(defaultValue));
     if (IsAnonymousFunctionDefinition(Initializer)) {
-      const hasNameProperty = Q(HasOwnProperty(v, new Value('name')));
+      const hasNameProperty = Q(yield* HasOwnProperty(v, new Value('name')));
       if (hasNameProperty === Value.false) {
-        X(SetFunctionName(v, bindingId));
+        X(yield* SetFunctionName(v, bindingId));
       }
     }
   }
   if (Type(environment) === 'Undefined') {
-    return Q(PutValue(lhs, v));
+    return Q(yield* PutValue(lhs, v));
   }
-  return InitializeReferencedBinding(lhs, v);
+  return yield* InitializeReferencedBinding(lhs, v);
 }
 
 // 13.3.3.8 #sec-destructuring-binding-patterns-runtime-semantics-iteratorbindinginitialization
@@ -216,7 +216,7 @@ function* IteratorBindingInitialization_BindingElementList(BindingElementList, i
 function* IteratorBindingInitialization_BindingElisionElement(BindingElisionElement, iteratorRecord, environment) {
   if (!BindingElisionElement) {
     // This is an elision.
-    return Q(IteratorDestructuringAssignmentEvaluation_Elision([BindingElisionElement], iteratorRecord));
+    return Q(yield* IteratorDestructuringAssignmentEvaluation_Elision([BindingElisionElement], iteratorRecord));
   }
   return yield* IteratorBindingInitialization_BindingElement(BindingElisionElement, iteratorRecord, environment);
 }
@@ -227,7 +227,8 @@ function* IteratorBindingInitialization_BindingElement(BindingElement, iteratorR
   switch (true) {
     case isSingleNameBinding(BindingElement):
       return yield* IteratorBindingInitialization_SingleNameBinding(BindingElement, iteratorRecord, environment);
-    case isBindingPattern(BindingElement) || isBindingPatternAndInitializer(BindingElement):
+    case isBindingPattern(BindingElement):
+    case isBindingPatternAndInitializer(BindingElement):
       return yield* IteratorBindingInitialization_BindingElement_BindingPattern(BindingElement, iteratorRecord, environment);
     default:
       throw new OutOfRange('IteratorBindingInitialization_BindingElement', BindingElement);
@@ -236,15 +237,15 @@ function* IteratorBindingInitialization_BindingElement(BindingElement, iteratorR
 
 // 13.3.3.8 #sec-destructuring-binding-patterns-runtime-semantics-iteratorbindinginitialization
 //   BindingRestElement : `...` BindingIdentifier
-function IteratorBindingInitialization_BindingRestElement_Identifier(BindingRestElement, iteratorRecord, environment) {
+function* IteratorBindingInitialization_BindingRestElement_Identifier(BindingRestElement, iteratorRecord, environment) {
   const BindingIdentifier = BindingRestElement.argument;
-  const lhs = Q(ResolveBinding(new Value(BindingIdentifier.name), environment, BindingIdentifier.strict));
-  const A = X(ArrayCreate(new Value(0)));
+  const lhs = Q(yield* ResolveBinding(new Value(BindingIdentifier.name), environment, BindingIdentifier.strict));
+  const A = X(yield* ArrayCreate(new Value(0)));
   let n = 0;
   while (true) {
     let next;
     if (iteratorRecord.Done === Value.false) {
-      next = IteratorStep(iteratorRecord);
+      next = yield* IteratorStep(iteratorRecord);
       if (next instanceof AbruptCompletion) {
         iteratorRecord.Done = Value.true;
       }
@@ -255,17 +256,17 @@ function IteratorBindingInitialization_BindingRestElement_Identifier(BindingRest
     }
     if (iteratorRecord.Done === Value.true) {
       if (Type(environment) === 'Undefined') {
-        return Q(PutValue(lhs, A));
+        return Q(yield* PutValue(lhs, A));
       }
-      return InitializeReferencedBinding(lhs, A);
+      return yield* InitializeReferencedBinding(lhs, A);
     }
-    const nextValue = IteratorValue(next);
+    const nextValue = yield* IteratorValue(next);
     if (nextValue instanceof AbruptCompletion) {
       iteratorRecord.Done = Value.true;
     }
     ReturnIfAbrupt(nextValue);
-    const nStr = X(ToString(new Value(n)));
-    const status = X(CreateDataProperty(A, nStr, nextValue));
+    const nStr = X(yield* ToString(new Value(n)));
+    const status = X(yield* CreateDataProperty(A, nStr, nextValue));
     Assert(status === Value.true);
     n += 1;
   }
@@ -276,12 +277,12 @@ function IteratorBindingInitialization_BindingRestElement_Identifier(BindingRest
 //     `...` BindingPattern
 function* IteratorBindingInitialization_BindingRestElement_Pattern(BindingRestElement, iteratorRecord, environment) {
   const BindingPattern = BindingRestElement.argument;
-  const A = X(ArrayCreate(new Value(0)));
+  const A = X(yield* ArrayCreate(new Value(0)));
   let n = 0;
   while (true) {
     let next;
     if (iteratorRecord.Done === Value.false) {
-      next = IteratorStep(iteratorRecord);
+      next = yield* IteratorStep(iteratorRecord);
       if (next instanceof AbruptCompletion) {
         iteratorRecord.Done = Value.true;
       }
@@ -293,13 +294,13 @@ function* IteratorBindingInitialization_BindingRestElement_Pattern(BindingRestEl
     if (iteratorRecord.Done === Value.true) {
       return yield* BindingInitialization_BindingPattern(BindingPattern, A, environment);
     }
-    const nextValue = IteratorValue(next);
+    const nextValue = yield* IteratorValue(next);
     if (nextValue instanceof AbruptCompletion) {
       iteratorRecord.Done = Value.true;
     }
     ReturnIfAbrupt(nextValue);
-    const nStr = X(ToString(new Value(n)));
-    const status = X(CreateDataProperty(A, nStr, nextValue));
+    const nStr = X(yield* ToString(new Value(n)));
+    const status = X(yield* CreateDataProperty(A, nStr, nextValue));
     Assert(status === Value.true);
     n += 1;
   }

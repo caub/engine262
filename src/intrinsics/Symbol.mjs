@@ -17,7 +17,7 @@ import { BootstrapConstructor } from './Bootstrap.mjs';
 
 export const GlobalSymbolRegistry = [];
 
-function SymbolConstructor([description = Value.undefined], { NewTarget }) {
+function* SymbolConstructor([description = Value.undefined], { NewTarget }) {
   if (Type(NewTarget) !== 'Undefined') {
     return surroundingAgent.Throw('TypeError');
   }
@@ -25,13 +25,13 @@ function SymbolConstructor([description = Value.undefined], { NewTarget }) {
   if (description === Value.undefined) {
     descString = Value.undefined;
   } else {
-    descString = Q(ToString(description));
+    descString = Q(yield* ToString(description));
   }
   return new SymbolValue(descString);
 }
 
-function Symbol_for([key = Value.undefined]) {
-  const stringKey = Q(ToString(key));
+function* Symbol_for([key = Value.undefined]) {
+  const stringKey = Q(yield* ToString(key));
   for (const e of GlobalSymbolRegistry) {
     if (SameValue(e.Key, stringKey) === Value.true) {
       return e.Symbol;
@@ -43,7 +43,7 @@ function Symbol_for([key = Value.undefined]) {
   return newSymbol;
 }
 
-function Symbol_keyFor([sym = Value.undefined]) {
+function* Symbol_keyFor([sym = Value.undefined]) {
   if (Type(sym) !== 'Symbol') {
     return surroundingAgent.Throw('TypeError');
   }
@@ -62,20 +62,13 @@ export function CreateSymbol(realmRec) {
   ]);
 
   for (const [name, sym] of Object.entries(wellKnownSymbols)) {
-    symbolConstructor.DefineOwnProperty(new Value(name), Descriptor({
+    symbolConstructor.properties.set(new Value(name), Descriptor({
       Value: sym,
       Writable: Value.false,
       Enumerable: Value.false,
       Configurable: Value.false,
     }));
   }
-
-  symbolConstructor.DefineOwnProperty(new Value('prototype'), Descriptor({
-    Value: realmRec.Intrinsics['%SymbolPrototype%'],
-    Writable: Value.true,
-    Enumerable: Value.false,
-    Configurable: Value.true,
-  }));
 
   realmRec.Intrinsics['%Symbol%'] = symbolConstructor;
 }

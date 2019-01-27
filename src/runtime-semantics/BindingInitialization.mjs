@@ -29,15 +29,15 @@ import {
 } from './all.mjs';
 
 // 12.1.5.1 #sec-initializeboundname
-export function InitializeBoundName(name, value, environment) {
+export function* InitializeBoundName(name, value, environment) {
   Assert(Type(name) === 'String');
   if (Type(environment) !== 'Undefined') {
     const env = environment.EnvironmentRecord;
-    env.InitializeBinding(name, value);
+    yield* env.InitializeBinding(name, value);
     return new NormalCompletion(Value.undefined);
   } else {
-    const lhs = ResolveBinding(name, undefined, false);
-    return Q(PutValue(lhs, value));
+    const lhs = yield* ResolveBinding(name, undefined, false);
+    return Q(yield* PutValue(lhs, value));
   }
 }
 
@@ -46,9 +46,9 @@ export function InitializeBoundName(name, value, environment) {
 //     Identifier
 //     `yield`
 //     `await`
-export function BindingInitialization_BindingIdentifier(BindingIdentifier, value, environment) {
+export function* BindingInitialization_BindingIdentifier(BindingIdentifier, value, environment) {
   const name = new Value(BindingIdentifier.name);
-  return Q(InitializeBoundName(name, value, environment));
+  return Q(yield* InitializeBoundName(name, value, environment));
 }
 
 // 13.3.3.5 #sec-destructuring-binding-patterns-runtime-semantics-bindinginitialization
@@ -62,12 +62,12 @@ export function* BindingInitialization_BindingPattern(BindingPattern, value, env
       return yield* BindingInitialization_ObjectBindingPattern(BindingPattern, value, environment);
 
     case isArrayBindingPattern(BindingPattern): {
-      const iteratorRecord = Q(GetIterator(value));
+      const iteratorRecord = Q(yield* GetIterator(value));
       const result = yield* IteratorBindingInitialization_ArrayBindingPattern(
         BindingPattern, iteratorRecord, environment,
       );
       if (iteratorRecord.Done === Value.false) {
-        return Q(IteratorClose(iteratorRecord, result));
+        return Q(yield* IteratorClose(iteratorRecord, result));
       }
       return result;
     }
@@ -84,7 +84,7 @@ export function* BindingInitialization_BindingPattern(BindingPattern, value, env
 export function* BindingInitialization_ForBinding(ForBinding, value, environment) {
   switch (true) {
     case isBindingIdentifier(ForBinding):
-      return BindingInitialization_BindingIdentifier(ForBinding, value, environment);
+      return yield* BindingInitialization_BindingIdentifier(ForBinding, value, environment);
 
     case isBindingPattern(ForBinding):
       return yield* BindingInitialization_BindingPattern(ForBinding, value, environment);
@@ -121,7 +121,7 @@ function* BindingInitialization_ObjectBindingPattern(ObjectBindingPattern, value
     return new NormalCompletion(undefined);
   }
 
-  return RestBindingInitialization_BindingRestProperty(
+  return yield* RestBindingInitialization_BindingRestProperty(
     BindingRestProperty, value, environment, excludedNames,
   );
 }
@@ -129,7 +129,7 @@ function* BindingInitialization_ObjectBindingPattern(ObjectBindingPattern, value
 export function* BindingInitialization_CatchParameter(CatchParameter, value, environment) {
   switch (true) {
     case isBindingIdentifier(CatchParameter):
-      return BindingInitialization_BindingIdentifier(CatchParameter, value, environment);
+      return yield* BindingInitialization_BindingIdentifier(CatchParameter, value, environment);
 
     case isBindingPattern(CatchParameter):
       return yield* BindingInitialization_BindingPattern(CatchParameter, value, environment);

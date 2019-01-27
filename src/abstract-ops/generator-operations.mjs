@@ -36,7 +36,7 @@ export function GeneratorStart(generator, generatorBody) {
       Assert(result.Type === 'throw');
       return Completion(result);
     }
-    return X(CreateIterResultObject(resultValue, Value.true));
+    return X(yield* CreateIterResultObject(resultValue, Value.true));
   }());
   generator.GeneratorContext = genContext;
   generator.GeneratorState = 'suspendedStart';
@@ -60,10 +60,10 @@ export function GeneratorValidate(generator) {
 }
 
 // 25.4.3.3 #sec-generatorresume
-export function GeneratorResume(generator, value) {
-  const state = Q(GeneratorValidate(generator));
+export function* GeneratorResume(generator, value) {
+  const state = Q(yield* GeneratorValidate(generator));
   if (state === 'completed') {
-    return X(CreateIterResultObject(Value.undefined, Value.true));
+    return X(yield* CreateIterResultObject(Value.undefined, Value.true));
   }
   Assert(state === 'suspendedStart' || state === 'suspendedYield');
   const genContext = generator.GeneratorContext;
@@ -79,9 +79,9 @@ export function GeneratorResume(generator, value) {
 }
 
 // 25.4.3.4 #sec-generatorresumeabrupt
-export function GeneratorResumeAbrupt(generator, abruptCompletion) {
+export function* GeneratorResumeAbrupt(generator, abruptCompletion) {
   Assert(abruptCompletion instanceof AbruptCompletion);
-  let state = Q(GeneratorValidate(generator));
+  let state = Q(yield* GeneratorValidate(generator));
   if (state === 'suspendedStart') {
     generator.GeneratorState = 'completed';
     generator.GeneratorContext = null;
@@ -89,7 +89,7 @@ export function GeneratorResumeAbrupt(generator, abruptCompletion) {
   }
   if (state === 'completed') {
     if (abruptCompletion.Type === 'return') {
-      return X(CreateIterResultObject(abruptCompletion.Value, Value.true));
+      return X(yield* CreateIterResultObject(abruptCompletion.Value, Value.true));
     }
     return Completion(abruptCompletion);
   }

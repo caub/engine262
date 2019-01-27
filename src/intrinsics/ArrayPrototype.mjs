@@ -7,8 +7,8 @@ import {
   wellKnownSymbols,
 } from '../value.mjs';
 import {
-  ArraySpeciesCreate,
   Assert,
+  ArraySpeciesCreate,
   Call,
   CreateArrayIterator,
   CreateDataProperty,
@@ -28,33 +28,33 @@ import {
   ToString,
 } from '../abstract-ops/all.mjs';
 import { Q, X } from '../completion.mjs';
-import { msg } from '../helpers.mjs';
+import { msg, unwind } from '../helpers.mjs';
 import { assignProps } from './Bootstrap.mjs';
 import { ArrayProto_sortBody, CreateArrayPrototypeShared } from './ArrayPrototypeShared.mjs';
 
 // 22.1.3.1 #sec-array.prototype.concat
-function ArrayProto_concat(args, { thisValue }) {
-  const O = Q(ToObject(thisValue));
-  const A = Q(ArraySpeciesCreate(O, new Value(0)));
+function* ArrayProto_concat(args, { thisValue }) {
+  const O = Q(yield* ToObject(thisValue));
+  const A = Q(yield* ArraySpeciesCreate(O, new Value(0)));
   let n = 0;
   const items = [O, ...args];
   while (items.length > 0) {
     const E = items.shift();
-    const spreadable = Q(IsConcatSpreadable(E));
+    const spreadable = Q(yield* IsConcatSpreadable(E));
     if (spreadable === Value.true) {
       let k = 0;
-      const lenProp = Q(Get(E, new Value('length')));
-      const len = Q(ToLength(lenProp)).numberValue();
+      const lenProp = Q(yield* Get(E, new Value('length')));
+      const len = Q(yield* ToLength(lenProp)).numberValue();
       if (n + len > (2 ** 53) - 1) {
         return surroundingAgent.Throw('TypeError', msg('ArrayPastSafeLength'));
       }
       while (k < len) {
-        const P = X(ToString(new Value(k)));
-        const exists = Q(HasProperty(E, P));
+        const P = X(yield* ToString(new Value(k)));
+        const exists = Q(yield* HasProperty(E, P));
         if (exists === Value.true) {
-          const subElement = Q(Get(E, P));
-          const nStr = X(ToString(new Value(n)));
-          Q(CreateDataPropertyOrThrow(A, nStr, subElement));
+          const subElement = Q(yield* Get(E, P));
+          const nStr = X(yield* ToString(new Value(n)));
+          Q(yield* CreateDataPropertyOrThrow(A, nStr, subElement));
         }
         n += 1;
         k += 1;
@@ -63,28 +63,31 @@ function ArrayProto_concat(args, { thisValue }) {
       if (n >= (2 ** 53) - 1) {
         return surroundingAgent.Throw('TypeError', msg('ArrayPastSafeLength'));
       }
-      const nStr = X(ToString(new Value(n)));
-      Q(CreateDataPropertyOrThrow(A, nStr, E));
+      const nStr = X(yield* ToString(new Value(n)));
+      Q(yield* CreateDataPropertyOrThrow(A, nStr, E));
       n += 1;
     }
   }
-  Q(Set(A, new Value('length'), new Value(n), Value.true));
+  Q(yield* Set(A, new Value('length'), new Value(n), Value.true));
   return A;
 }
 
 // 22.1.3.3 #sec-array.prototype.copywithin
-function ArrayProto_copyWithin([target = Value.undefined, start = Value.undefined, end = Value.undefined], { thisValue }) {
-  const O = Q(ToObject(thisValue));
-  const lenProp = Q(Get(O, new Value('length')));
-  const len = Q(ToLength(lenProp));
-  const relativeTarget = Q(ToInteger(target));
+function* ArrayProto_copyWithin(
+  [target = Value.undefined, start = Value.undefined, end = Value.undefined],
+  { thisValue },
+) {
+  const O = Q(yield* ToObject(thisValue));
+  const lenProp = Q(yield* Get(O, new Value('length')));
+  const len = Q(yield* ToLength(lenProp));
+  const relativeTarget = Q(yield* ToInteger(target));
   let to;
   if (relativeTarget.numberValue() < 0) {
     to = Math.max(len.numberValue() + relativeTarget.numberValue(), 0);
   } else {
     to = Math.min(relativeTarget.numberValue(), len.numberValue());
   }
-  const relativeStart = Q(ToInteger(start));
+  const relativeStart = Q(yield* ToInteger(start));
   let from;
   if (relativeStart.numberValue() < 0) {
     from = Math.max(len.numberValue() + relativeStart.numberValue(), 0);
@@ -95,7 +98,7 @@ function ArrayProto_copyWithin([target = Value.undefined, start = Value.undefine
   if (end === Value.undefined) {
     relativeEnd = len;
   } else {
-    relativeEnd = Q(ToInteger(end));
+    relativeEnd = Q(yield* ToInteger(end));
   }
   let final;
   if (relativeEnd.numberValue() < 0) {
@@ -113,14 +116,14 @@ function ArrayProto_copyWithin([target = Value.undefined, start = Value.undefine
     direction = 1;
   }
   while (count > 0) {
-    const fromKey = X(ToString(new Value(from)));
-    const toKey = X(ToString(new Value(to)));
-    const fromPresent = Q(HasProperty(O, fromKey));
+    const fromKey = X(yield* ToString(new Value(from)));
+    const toKey = X(yield* ToString(new Value(to)));
+    const fromPresent = Q(yield* HasProperty(O, fromKey));
     if (fromPresent === Value.true) {
-      const fromVal = Q(Get(O, fromKey));
-      Q(Set(O, toKey, fromVal, Value.true));
+      const fromVal = Q(yield* Get(O, fromKey));
+      Q(yield* Set(O, toKey, fromVal, Value.true));
     } else {
-      Q(DeletePropertyOrThrow(O, toKey));
+      Q(yield* DeletePropertyOrThrow(O, toKey));
     }
     from += direction;
     to += direction;
@@ -130,17 +133,20 @@ function ArrayProto_copyWithin([target = Value.undefined, start = Value.undefine
 }
 
 // 22.1.3.4 #sec-array.prototype.entries
-function ArrayProto_entries(args, { thisValue }) {
-  const O = Q(ToObject(thisValue));
-  return CreateArrayIterator(O, 'key+value');
+function* ArrayProto_entries(args, { thisValue }) {
+  const O = Q(yield* ToObject(thisValue));
+  return yield* CreateArrayIterator(O, 'key+value');
 }
 
 // 22.1.3.6 #sec-array.prototype.fill
-function ArrayProto_fill([value = Value.undefined, start = Value.undefined, end = Value.undefined], { thisValue }) {
-  const O = Q(ToObject(thisValue));
-  const lenProp = Q(Get(O, new Value('length')));
-  const len = Q(ToLength(lenProp)).numberValue();
-  const relativeStart = Q(ToInteger(start)).numberValue();
+function* ArrayProto_fill(
+  [value = Value.undefined, start = Value.undefined, end = Value.undefined],
+  { thisValue },
+) {
+  const O = Q(yield* ToObject(thisValue));
+  const lenProp = Q(yield* Get(O, new Value('length')));
+  const len = Q(yield* ToLength(lenProp)).numberValue();
+  const relativeStart = Q(yield* ToInteger(start)).numberValue();
   let k;
   if (relativeStart < 0) {
     k = Math.max(len + relativeStart, 0);
@@ -151,7 +157,7 @@ function ArrayProto_fill([value = Value.undefined, start = Value.undefined, end 
   if (Type(end) === 'Undefined') {
     relativeEnd = len;
   } else {
-    relativeEnd = Q(ToInteger(end)).numberValue();
+    relativeEnd = Q(yield* ToInteger(end)).numberValue();
   }
   let final;
   if (relativeEnd < 0) {
@@ -160,33 +166,33 @@ function ArrayProto_fill([value = Value.undefined, start = Value.undefined, end 
     final = Math.min(relativeEnd, len);
   }
   while (k < final) {
-    const Pk = X(ToString(new Value(k)));
-    Q(Set(O, Pk, value, Value.true));
+    const Pk = X(yield* ToString(new Value(k)));
+    Q(yield* Set(O, Pk, value, Value.true));
     k += 1;
   }
   return O;
 }
 
 // 22.1.3.7 #sec-array.prototype.filter
-function ArrayProto_filter([callbackfn = Value.undefined, thisArg], { thisValue }) {
-  const O = Q(ToObject(thisValue));
-  const lenProp = Q(Get(O, new Value('length')));
-  const len = Q(ToLength(lenProp)).numberValue();
+function* ArrayProto_filter([callbackfn = Value.undefined, thisArg], { thisValue }) {
+  const O = Q(yield* ToObject(thisValue));
+  const lenProp = Q(yield* Get(O, new Value('length')));
+  const len = Q(yield* ToLength(lenProp)).numberValue();
   if (IsCallable(callbackfn) === Value.false) {
     return surroundingAgent.Throw('TypeError', msg('NotAFunction', callbackfn));
   }
   const T = thisArg || Value.undefined;
-  const A = Q(ArraySpeciesCreate(O, new Value(0)));
+  const A = Q(yield* ArraySpeciesCreate(O, new Value(0)));
   let k = 0;
   let to = 0;
   while (k < len) {
-    const Pk = X(ToString(new Value(k)));
-    const kPresent = Q(HasProperty(O, Pk));
+    const Pk = X(yield* ToString(new Value(k)));
+    const kPresent = Q(yield* HasProperty(O, Pk));
     if (kPresent === Value.true) {
-      const kValue = Q(Get(O, Pk));
-      const selected = ToBoolean(Q(Call(callbackfn, T, [kValue, new Value(k), O])));
+      const kValue = Q(yield* Get(O, Pk));
+      const selected = ToBoolean(Q(yield* Call(callbackfn, T, [kValue, new Value(k), O])));
       if (selected === Value.true) {
-        Q(CreateDataPropertyOrThrow(A, ToString(new Value(to)), kValue));
+        Q(yield* CreateDataPropertyOrThrow(A, yield* ToString(new Value(to)), kValue));
         to += 1;
       }
     }
@@ -196,29 +202,29 @@ function ArrayProto_filter([callbackfn = Value.undefined, thisArg], { thisValue 
 }
 
 // 22.1.3.14 #sec-array.prototype.keys
-function ArrayProto_keys(args, { thisValue }) {
-  const O = Q(ToObject(thisValue));
-  return CreateArrayIterator(O, 'key');
+function* ArrayProto_keys(args, { thisValue }) {
+  const O = Q(yield* ToObject(thisValue));
+  return yield* CreateArrayIterator(O, 'key');
 }
 
 // 22.1.3.16 #sec-array.prototype.map
-function ArrayProto_map([callbackfn = Value.undefined, thisArg], { thisValue }) {
-  const O = Q(ToObject(thisValue));
-  const lenProp = Q(Get(O, new Value('length')));
-  const len = Q(ToLength(lenProp));
+function* ArrayProto_map([callbackfn = Value.undefined, thisArg], { thisValue }) {
+  const O = Q(yield* ToObject(thisValue));
+  const lenProp = Q(yield* Get(O, new Value('length')));
+  const len = Q(yield* ToLength(lenProp));
   if (IsCallable(callbackfn) === Value.false) {
     return surroundingAgent.Throw('TypeError', 'callbackfn is not callable');
   }
   const T = thisArg || Value.undefined;
-  const A = Q(ArraySpeciesCreate(O, len));
+  const A = Q(yield* ArraySpeciesCreate(O, len));
   let k = 0;
   while (k < len.numberValue()) {
-    const Pk = X(ToString(new Value(k)));
-    const kPresent = Q(HasProperty(O, Pk));
+    const Pk = X(yield* ToString(new Value(k)));
+    const kPresent = Q(yield* HasProperty(O, Pk));
     if (kPresent === Value.true) {
-      const kValue = Q(Get(O, Pk));
-      const mappedValue = Q(Call(callbackfn, T, [kValue, new Value(k), O]));
-      Q(CreateDataPropertyOrThrow(A, Pk, mappedValue));
+      const kValue = Q(yield* Get(O, Pk));
+      const mappedValue = Q(yield* Call(callbackfn, T, [kValue, new Value(k), O]));
+      Q(yield* CreateDataPropertyOrThrow(A, Pk, mappedValue));
     }
     k += 1;
   }
@@ -226,72 +232,72 @@ function ArrayProto_map([callbackfn = Value.undefined, thisArg], { thisValue }) 
 }
 
 // 22.1.3.17 #sec-array.prototype.pop
-function ArrayProto_pop(args, { thisValue }) {
-  const O = Q(ToObject(thisValue));
-  const len = Q(ToLength(Q(Get(O, new Value('length'))))).numberValue();
+function* ArrayProto_pop(args, { thisValue }) {
+  const O = Q(yield* ToObject(thisValue));
+  const len = Q(yield* ToLength(Q(yield* Get(O, new Value('length'))))).numberValue();
   if (len === 0) {
-    Q(Set(O, new Value('length'), new Value(0), Value.true));
+    Q(yield* Set(O, new Value('length'), new Value(0), Value.true));
     return Value.undefined;
   } else {
     const newLen = len - 1;
-    const index = Q(ToString(new Value(newLen)));
-    const element = Q(Get(O, index));
-    Q(DeletePropertyOrThrow(O, index));
-    Q(Set(O, new Value('length'), new Value(newLen), Value.true));
+    const index = Q(yield* ToString(new Value(newLen)));
+    const element = Q(yield* Get(O, index));
+    Q(yield* DeletePropertyOrThrow(O, index));
+    Q(yield* Set(O, new Value('length'), new Value(newLen), Value.true));
     return element;
   }
 }
 
 // 22.1.3.18 #sec-array.prototype.push
-function ArrayProto_push(items, { thisValue }) {
-  const O = Q(ToObject(thisValue));
-  let len = Q(ToLength(Q(Get(O, new Value('length'))))).numberValue();
+function* ArrayProto_push(items, { thisValue }) {
+  const O = Q(yield* ToObject(thisValue));
+  let len = Q(yield* ToLength(Q(yield* Get(O, new Value('length'))))).numberValue();
   const argCount = items.length;
   if (len + argCount > (2 ** 53) - 1) {
     return surroundingAgent.Throw('TypeError', msg('ArrayPastSafeLength'));
   }
   while (items.length > 0) {
     const E = items.shift();
-    Q(Set(O, X(ToString(new Value(len))), E, Value.true));
+    Q(yield* Set(O, X(yield* ToString(new Value(len))), E, Value.true));
     len += 1;
   }
-  Q(Set(O, new Value('length'), new Value(len), Value.true));
+  Q(yield* Set(O, new Value('length'), new Value(len), Value.true));
   return new Value(len);
 }
 
 // 22.1.3.22 #sec-array.prototype.shift
-function ArrayProto_shift(args, { thisValue }) {
-  const O = Q(ToObject(thisValue));
-  const lenProp = Q(Get(O, new Value('length')));
-  const len = Q(ToLength(lenProp)).numberValue();
+function* ArrayProto_shift(args, { thisValue }) {
+  const O = Q(yield* ToObject(thisValue));
+  const lenProp = Q(yield* Get(O, new Value('length')));
+  const len = Q(yield* ToLength(lenProp)).numberValue();
   if (len === 0) {
-    Q(Set(O, new Value('length'), new Value(0), Value.true));
+    Q(yield* Set(O, new Value('length'), new Value(0), Value.true));
     return Value.undefined;
   }
-  const first = Q(Get(O, new Value('0')));
+  const first = Q(yield* Get(O, new Value('0')));
   let k = 1;
   while (k < len) {
-    const from = X(ToString(new Value(k)));
-    const to = X(ToString(new Value(k - 1)));
-    const fromPresent = Q(HasProperty(O, from));
+    const from = X(yield* ToString(new Value(k)));
+    const to = X(yield* ToString(new Value(k - 1)));
+    const fromPresent = Q(yield* HasProperty(O, from));
     if (fromPresent === Value.true) {
-      const fromVal = Q(Get(O, from));
-      Q(Set(O, to, fromVal, Value.true));
+      const fromVal = Q(yield* Get(O, from));
+      Q(yield* Set(O, to, fromVal, Value.true));
     } else {
-      Q(DeletePropertyOrThrow(O, to));
+      Q(yield* DeletePropertyOrThrow(O, to));
     }
     k += 1;
   }
-  Q(DeletePropertyOrThrow(O, X(ToString(new Value(len - 1)))));
-  Q(Set(O, new Value('length'), new Value(len - 1), Value.true));
+  Q(yield* DeletePropertyOrThrow(O, X(yield* ToString(new Value(len - 1)))));
+  Q(yield* Set(O, new Value('length'), new Value(len - 1), Value.true));
   return first;
 }
 
 // 22.1.3.23 #sec-array.prototype.slice
-function ArrayProto_slice([start = Value.undefined, end = Value.undefined], { thisValue }) {
-  const O = Q(ToObject(thisValue));
-  const len = Q(ToLength(Q(Get(O, new Value('length'))))).numberValue();
-  const relativeStart = Q(ToInteger(start)).numberValue();
+function* ArrayProto_slice([start = Value.undefined, end = Value.undefined], { thisValue }) {
+  const O = Q(yield* ToObject(thisValue));
+  const len = Q(yield* ToLength(Q(yield* Get(O, new Value('length'))))).numberValue();
+  const relativeStart = Q(yield* ToInteger(start)).numberValue();
   let k;
   if (relativeStart < 0) {
     k = Math.max(len + relativeStart, 0);
@@ -302,7 +308,7 @@ function ArrayProto_slice([start = Value.undefined, end = Value.undefined], { th
   if (Type(end) === 'Undefined') {
     relativeEnd = len;
   } else {
-    relativeEnd = Q(ToInteger(end)).numberValue();
+    relativeEnd = Q(yield* ToInteger(end)).numberValue();
   }
   let final;
   if (relativeEnd < 0) {
@@ -311,41 +317,41 @@ function ArrayProto_slice([start = Value.undefined, end = Value.undefined], { th
     final = Math.min(relativeEnd, len);
   }
   const count = Math.max(final - k, 0);
-  const A = Q(ArraySpeciesCreate(O, new Value(count)));
+  const A = Q(yield* ArraySpeciesCreate(O, new Value(count)));
   let n = 0;
   while (k < final) {
-    const Pk = X(ToString(new Value(k)));
-    const kPresent = Q(HasProperty(O, Pk));
+    const Pk = X(yield* ToString(new Value(k)));
+    const kPresent = Q(yield* HasProperty(O, Pk));
     if (kPresent === Value.true) {
-      const kValue = Q(Get(O, Pk));
-      const nStr = X(ToString(new Value(n)));
-      Q(CreateDataPropertyOrThrow(A, nStr, kValue));
+      const kValue = Q(yield* Get(O, Pk));
+      const nStr = X(yield* ToString(new Value(n)));
+      Q(yield* CreateDataPropertyOrThrow(A, nStr, kValue));
     }
     k += 1;
     n += 1;
   }
-  Q(Set(A, new Value('length'), new Value(n), Value.true));
+  Q(yield* Set(A, new Value('length'), new Value(n), Value.true));
   return A;
 }
 
 // 22.1.3.25 #sec-array.prototype.sort
-function ArrayProto_sort([comparefn = Value.undefined], { thisValue }) {
+function* ArrayProto_sort([comparefn = Value.undefined], { thisValue }) {
   if (comparefn !== Value.undefined && IsCallable(comparefn) === Value.false) {
     return surroundingAgent.Throw('TypeError', msg('NotAFunction', comparefn));
   }
-  const obj = Q(ToObject(thisValue));
-  const lenProp = Q(Get(obj, new Value('length')));
-  const len = Q(ToLength(lenProp));
+  const obj = Q(yield* ToObject(thisValue));
+  const lenProp = Q(yield* Get(obj, new Value('length')));
+  const len = Q(yield* ToLength(lenProp));
 
   return ArrayProto_sortBody(obj, len, (x, y) => SortCompare(x, y, comparefn));
 }
 
 // 22.1.3.26 #sec-array.prototype.splice
-function ArrayProto_splice(args, { thisValue }) {
+function* ArrayProto_splice(args, { thisValue }) {
   const [start = Value.undefined, deleteCount = Value.undefined, ...items] = args;
-  const O = Q(ToObject(thisValue));
-  const len = Q(ToLength(Q(Get(O, new Value('length'))))).numberValue();
-  const relativeStart = Q(ToInteger(start)).numberValue();
+  const O = Q(yield* ToObject(thisValue));
+  const len = Q(yield* ToLength(Q(yield* Get(O, new Value('length'))))).numberValue();
+  const relativeStart = Q(yield* ToInteger(start)).numberValue();
   let actualStart;
   if (relativeStart < 0) {
     actualStart = Math.max(len + relativeStart, 0);
@@ -362,55 +368,55 @@ function ArrayProto_splice(args, { thisValue }) {
     actualDeleteCount = len - actualStart;
   } else {
     insertCount = args.length - 2;
-    const dc = Q(ToInteger(deleteCount)).numberValue();
+    const dc = Q(yield* ToInteger(deleteCount)).numberValue();
     actualDeleteCount = Math.min(Math.max(dc, 0), len - actualStart);
   }
   if (len + insertCount - actualDeleteCount > (2 ** 53) - 1) {
     return surroundingAgent.Throw('TypeError', msg('ArrayPastSafeLength'));
   }
-  const A = Q(ArraySpeciesCreate(O, new Value(actualDeleteCount)));
+  const A = Q(yield* ArraySpeciesCreate(O, new Value(actualDeleteCount)));
   let k = 0;
   while (k < actualDeleteCount) {
-    const from = X(ToString(new Value(actualStart + k)));
-    const fromPresent = Q(HasProperty(O, from));
+    const from = X(yield* ToString(new Value(actualStart + k)));
+    const fromPresent = Q(yield* HasProperty(O, from));
     if (fromPresent === Value.true) {
-      const fromValue = Q(Get(O, from));
-      Q(CreateDataPropertyOrThrow(A, X(ToString(new Value(k))), fromValue));
+      const fromValue = Q(yield* Get(O, from));
+      Q(yield* CreateDataPropertyOrThrow(A, X(yield* ToString(new Value(k))), fromValue));
     }
     k += 1;
   }
-  Q(Set(A, new Value('length'), new Value(actualDeleteCount), Value.true));
+  Q(yield* Set(A, new Value('length'), new Value(actualDeleteCount), Value.true));
   const itemCount = items.length;
   if (itemCount < actualDeleteCount) {
     k = actualStart;
     while (k < len - actualDeleteCount) {
-      const from = X(ToString(new Value(k + actualDeleteCount)));
-      const to = X(ToString(new Value(k + itemCount)));
-      const fromPresent = Q(HasProperty(O, from));
+      const from = X(yield* ToString(new Value(k + actualDeleteCount)));
+      const to = X(yield* ToString(new Value(k + itemCount)));
+      const fromPresent = Q(yield* HasProperty(O, from));
       if (fromPresent === Value.true) {
-        const fromValue = Q(Get(O, from));
-        Q(Set(O, to, fromValue, Value.true));
+        const fromValue = Q(yield* Get(O, from));
+        Q(yield* Set(O, to, fromValue, Value.true));
       } else {
-        Q(DeletePropertyOrThrow(O, to));
+        Q(yield* DeletePropertyOrThrow(O, to));
       }
       k += 1;
     }
     k = len;
     while (k > len - actualDeleteCount + itemCount) {
-      Q(DeletePropertyOrThrow(O, X(ToString(new Value(k - 1)))));
+      Q(yield* DeletePropertyOrThrow(O, X(yield* ToString(new Value(k - 1)))));
       k -= 1;
     }
   } else if (itemCount > actualDeleteCount) {
     k = len - actualDeleteCount;
     while (k > actualStart) {
-      const from = X(ToString(new Value(k + actualDeleteCount - 1)));
-      const to = X(ToString(new Value(k + itemCount - 1)));
-      const fromPresent = Q(HasProperty(O, from));
+      const from = X(yield* ToString(new Value(k + actualDeleteCount - 1)));
+      const to = X(yield* ToString(new Value(k + itemCount - 1)));
+      const fromPresent = Q(yield* HasProperty(O, from));
       if (fromPresent === Value.true) {
-        const fromValue = Q(Get(O, from));
-        Q(Set(O, to, fromValue, Value.true));
+        const fromValue = Q(yield* Get(O, from));
+        Q(yield* Set(O, to, fromValue, Value.true));
       } else {
-        Q(DeletePropertyOrThrow(O, to));
+        Q(yield* DeletePropertyOrThrow(O, to));
       }
       k -= 1;
     }
@@ -418,28 +424,33 @@ function ArrayProto_splice(args, { thisValue }) {
   k = actualStart;
   while (items.length > 0) {
     const E = items.shift();
-    Q(Set(O, X(ToString(new Value(k))), E, Value.true));
+    Q(yield* Set(O, X(yield* ToString(new Value(k))), E, Value.true));
     k += 1;
   }
-  Q(Set(O, new Value('length'), new Value(len - actualDeleteCount + itemCount), Value.true));
+  Q(yield* Set(
+    O,
+    new Value('length'),
+    new Value(len - actualDeleteCount + itemCount),
+    Value.true,
+  ));
   return A;
 }
 
 // 22.1.3.28 #sec-array.prototype.tostring
-function ArrayProto_toString(a, { thisValue }) {
-  const array = Q(ToObject(thisValue));
-  let func = Q(Get(array, new Value('join')));
+function* ArrayProto_toString(a, { thisValue }) {
+  const array = Q(yield* ToObject(thisValue));
+  let func = Q(yield* Get(array, new Value('join')));
   if (IsCallable(func) === Value.false) {
     func = surroundingAgent.intrinsic('%ObjProto_toString%');
   }
-  return Q(Call(func, array));
+  return Q(yield* Call(func, array));
 }
 
 // 22.1.3.29 #sec-array.prototype.unshift
-function ArrayProto_unshift(args, { thisValue }) {
-  const O = Q(ToObject(thisValue));
-  const lenProp = Q(Get(O, new Value('length')));
-  const len = Q(ToLength(lenProp)).numberValue();
+function* ArrayProto_unshift(args, { thisValue }) {
+  const O = Q(yield* ToObject(thisValue));
+  const lenProp = Q(yield* Get(O, new Value('length')));
+  const len = Q(yield* ToLength(lenProp)).numberValue();
   const argCount = args.length;
   if (argCount > 0) {
     if (len + argCount > (2 ** 53) - 1) {
@@ -447,14 +458,14 @@ function ArrayProto_unshift(args, { thisValue }) {
     }
     let k = len;
     while (k > 0) {
-      const from = X(ToString(new Value(k - 1)));
-      const to = X(ToString(new Value(k + argCount - 1)));
-      const fromPresent = Q(HasProperty(O, from));
+      const from = X(yield* ToString(new Value(k - 1)));
+      const to = X(yield* ToString(new Value(k + argCount - 1)));
+      const fromPresent = Q(yield* HasProperty(O, from));
       if (fromPresent === Value.true) {
-        const fromValue = Q(Get(O, from));
-        Q(Set(O, to, fromValue, Value.true));
+        const fromValue = Q(yield* Get(O, from));
+        Q(yield* Set(O, to, fromValue, Value.true));
       } else {
-        Q(DeletePropertyOrThrow(O, to));
+        Q(yield* DeletePropertyOrThrow(O, to));
       }
       k -= 1;
     }
@@ -462,18 +473,18 @@ function ArrayProto_unshift(args, { thisValue }) {
     const items = args;
     while (items.length !== 0) {
       const E = items.shift();
-      const jStr = X(ToString(new Value(j)));
-      Q(Set(O, jStr, E, Value.true));
+      const jStr = X(yield* ToString(new Value(j)));
+      Q(yield* Set(O, jStr, E, Value.true));
       j += 1;
     }
   }
-  Q(Set(O, new Value('length'), new Value(len + argCount), Value.true));
+  Q(yield* Set(O, new Value('length'), new Value(len + argCount), Value.true));
   return new Value(len + argCount);
 }
 
 // 22.1.3.30 #sec-array.prototype.values
-function ArrayProto_values(args, { thisValue }) {
-  const O = Q(ToObject(thisValue));
+function* ArrayProto_values(args, { thisValue }) {
+  const O = Q(yield* ToObject(thisValue));
   return CreateArrayIterator(O, 'value');
 }
 
@@ -510,33 +521,33 @@ export function CreateArrayPrototype(realmRec) {
   CreateArrayPrototypeShared(
     realmRec,
     proto,
-    () => {},
+    function* priorToEvaluatingAlgorithm() { return undefined; },
     (O) => Get(O, new Value('length')),
   );
 
-  proto.DefineOwnProperty(wellKnownSymbols.iterator, proto.GetOwnProperty(new Value('values')));
+  proto.properties.set(wellKnownSymbols.iterator, proto.properties.get(new Value('values')));
 
   {
     const unscopableList = ObjectCreate(Value.null);
-    Assert(X(CreateDataProperty(unscopableList, new Value('copyWithin'), Value.true)) === Value.true);
-    Assert(X(CreateDataProperty(unscopableList, new Value('entries'), Value.true)) === Value.true);
-    Assert(X(CreateDataProperty(unscopableList, new Value('fill'), Value.true)) === Value.true);
-    Assert(X(CreateDataProperty(unscopableList, new Value('find'), Value.true)) === Value.true);
-    Assert(X(CreateDataProperty(unscopableList, new Value('findIndex'), Value.true)) === Value.true);
-    Assert(X(CreateDataProperty(unscopableList, new Value('includes'), Value.true)) === Value.true);
-    Assert(X(CreateDataProperty(unscopableList, new Value('keys'), Value.true)) === Value.true);
-    Assert(X(CreateDataProperty(unscopableList, new Value('values'), Value.true)) === Value.true);
-    X(proto.DefineOwnProperty(wellKnownSymbols.unscopables, Descriptor({
+    Assert(X(unwind(CreateDataProperty(unscopableList, new Value('copyWithin'), Value.true))) === Value.true);
+    Assert(X(unwind(CreateDataProperty(unscopableList, new Value('entries'), Value.true))) === Value.true);
+    Assert(X(unwind(CreateDataProperty(unscopableList, new Value('fill'), Value.true))) === Value.true);
+    Assert(X(unwind(CreateDataProperty(unscopableList, new Value('find'), Value.true))) === Value.true);
+    Assert(X(unwind(CreateDataProperty(unscopableList, new Value('findIndex'), Value.true))) === Value.true);
+    Assert(X(unwind(CreateDataProperty(unscopableList, new Value('includes'), Value.true))) === Value.true);
+    Assert(X(unwind(CreateDataProperty(unscopableList, new Value('keys'), Value.true))) === Value.true);
+    Assert(X(unwind(CreateDataProperty(unscopableList, new Value('values'), Value.true))) === Value.true);
+    proto.properties.set(wellKnownSymbols.unscopables, Descriptor({
       Value: unscopableList,
       Writable: Value.false,
       Enumerable: Value.false,
       Configurable: Value.true,
-    })));
+    }));
   }
 
   realmRec.Intrinsics['%ArrayPrototype%'] = proto;
 
-  realmRec.Intrinsics['%ArrayProto_keys%'] = proto.Get(new Value('keys'), proto);
-  realmRec.Intrinsics['%ArrayProto_entries%'] = proto.Get(new Value('entries'), proto);
-  realmRec.Intrinsics['%ArrayProto_values%'] = proto.Get(new Value('values'), proto);
+  realmRec.Intrinsics['%ArrayProto_keys%'] = proto.properties.get(new Value('keys')).Value;
+  realmRec.Intrinsics['%ArrayProto_entries%'] = proto.properties.get(new Value('entries')).Value;
+  realmRec.Intrinsics['%ArrayProto_values%'] = proto.properties.get(new Value('values')).Value;
 }

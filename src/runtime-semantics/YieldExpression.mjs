@@ -38,13 +38,13 @@ function* Evaluate_YieldExpression_WithoutStar(YieldExpression) {
   if (YieldExpression.argument) {
     const AssignmentExpression = YieldExpression.argument;
     const exprRef = yield* Evaluate(AssignmentExpression);
-    value = Q(GetValue(exprRef));
+    value = Q(yield* GetValue(exprRef));
   }
   if (generatorKind === 'async') {
     return Q(yield* AsyncGeneratorYield(value));
   }
   Assert(generatorKind === 'sync');
-  return Q(yield* GeneratorYield(CreateIterResultObject(value, Value.false)));
+  return Q(yield* GeneratorYield(yield* CreateIterResultObject(value, Value.false)));
 }
 
 // 14.4.13 #sec-generator-function-definitions-runtime-semantics-evaluation
@@ -53,44 +53,44 @@ function* Evaluate_YieldExpression_WithoutStar(YieldExpression) {
 function* Evaluate_YieldExpression_Star({ argument: AssignmentExpression }) {
   const generatorKind = X(GetGeneratorKind());
   const exprRef = yield* Evaluate(AssignmentExpression);
-  const value = Q(GetValue(exprRef));
-  const iteratorRecord = Q(GetIterator(value, generatorKind));
+  const value = Q(yield* GetValue(exprRef));
+  const iteratorRecord = Q(yield* GetIterator(value, generatorKind));
   const iterator = iteratorRecord.Iterator;
   let received = new NormalCompletion(Value.undefined);
   while (true) {
     if (received.Type === 'normal') {
-      let innerResult = Q(Call(iteratorRecord.NextMethod, iteratorRecord.Iterator, [received.Value]));
+      let innerResult = Q(yield* Call(iteratorRecord.NextMethod, iteratorRecord.Iterator, [received.Value]));
       if (generatorKind === 'async') {
         innerResult = Q(yield* Await(innerResult));
       }
       if (Type(innerResult) !== 'Object') {
         return surroundingAgent.Throw('TypeError');
       }
-      const done = Q(IteratorComplete(innerResult));
+      const done = Q(yield* IteratorComplete(innerResult));
       if (done === Value.true) {
-        return Q(IteratorValue(innerResult));
+        return Q(yield* IteratorValue(innerResult));
       }
       if (generatorKind === 'async') {
-        received = EnsureCompletion(yield* AsyncGeneratorYield(Q(IteratorValue(innerResult))));
+        received = EnsureCompletion(yield* AsyncGeneratorYield(Q(yield* IteratorValue(innerResult))));
       } else {
         received = EnsureCompletion(yield* GeneratorYield(innerResult));
       }
     } else if (received.Type === 'throw') {
-      const thr = Q(GetMethod(iterator, new Value('throw')));
+      const thr = Q(yield* GetMethod(iterator, new Value('throw')));
       if (Type(thr) !== 'Undefined') {
-        let innerResult = Q(Call(thr, iterator, [received.Value]));
+        let innerResult = Q(yield* Call(thr, iterator, [received.Value]));
         if (generatorKind === 'async') {
           innerResult = Q(yield* Await(innerResult));
         }
         if (Type(innerResult) !== 'Object') {
           return surroundingAgent.Throw('TypeError');
         }
-        const done = Q(IteratorComplete(innerResult));
+        const done = Q(yield* IteratorComplete(innerResult));
         if (done === Value.true) {
-          return Q(IteratorValue(innerResult));
+          return Q(yield* IteratorValue(innerResult));
         }
         if (generatorKind === 'async') {
-          received = EnsureCompletion(yield* AsyncGeneratorYield(Q(IteratorValue(innerResult))));
+          received = EnsureCompletion(yield* AsyncGeneratorYield(Q(yield* IteratorValue(innerResult))));
         } else {
           received = EnsureCompletion(yield* GeneratorYield(innerResult));
         }
@@ -99,33 +99,33 @@ function* Evaluate_YieldExpression_Star({ argument: AssignmentExpression }) {
         if (generatorKind === 'async') {
           Q(yield* AsyncIteratorClose(iteratorRecord, closeCompletion));
         } else {
-          Q(IteratorClose(iteratorRecord, closeCompletion));
+          Q(yield* IteratorClose(iteratorRecord, closeCompletion));
         }
         return surroundingAgent.Throw('TypeError');
       }
     } else {
       Assert(received.Type === 'return');
-      const ret = Q(GetMethod(iterator, new Value('return')));
+      const ret = Q(yield* GetMethod(iterator, new Value('return')));
       if (Type(ret) === 'Undefined') {
         if (generatorKind === 'async') {
           received.Value = Q(yield* Await(received.Value));
         }
         return Completion(received);
       }
-      let innerReturnResult = Q(Call(ret, iterator, [received.Value]));
+      let innerReturnResult = Q(yield* Call(ret, iterator, [received.Value]));
       if (generatorKind === 'async') {
         innerReturnResult = Q(yield* Await(innerReturnResult));
       }
       if (Type(innerReturnResult) !== 'Object') {
         return surroundingAgent.Throw('TypeError');
       }
-      const done = Q(IteratorComplete(innerReturnResult));
+      const done = Q(yield* IteratorComplete(innerReturnResult));
       if (done === Value.true) {
-        const innerValue = Q(IteratorValue(innerReturnResult));
+        const innerValue = Q(yield* IteratorValue(innerReturnResult));
         return new ReturnCompletion(innerValue);
       }
       if (generatorKind === 'async') {
-        received = EnsureCompletion(yield* AsyncGeneratorYield(Q(IteratorValue(innerReturnResult))));
+        received = EnsureCompletion(yield* AsyncGeneratorYield(Q(yield* IteratorValue(innerReturnResult))));
       } else {
         received = EnsureCompletion(yield* GeneratorYield(innerReturnResult));
       }

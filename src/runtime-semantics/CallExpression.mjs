@@ -45,9 +45,9 @@ export function* EvaluateCall(func, ref, args, tailPosition) {
     return surroundingAgent.Throw('TypeError', msg('NotAFunction', func));
   }
   if (tailPosition) {
-    PrepareForTailCall();
+    yield* PrepareForTailCall();
   }
-  const result = Call(func, thisValue, argList);
+  const result = yield* Call(func, thisValue, argList);
   // Assert: If tailPosition is true, the above call will not return here
   // but instead evaluation will continue as if the following return has already occurred.
   if (!(result instanceof AbruptCompletion)) {
@@ -65,7 +65,7 @@ export function* Evaluate_CallExpression(CallExpression) {
   const memberExpr = expr.callee;
   const args = expr.arguments;
   const ref = yield* Evaluate(memberExpr);
-  const func = Q(GetValue(ref));
+  const func = Q(yield* GetValue(ref));
   if (Type(ref) === 'Reference'
       && IsPropertyReference(ref) === Value.false
       && (Type(GetReferencedName(ref)) === 'String'
@@ -79,7 +79,7 @@ export function* Evaluate_CallExpression(CallExpression) {
       const strictCaller = CallExpression.strict;
       const evalRealm = surroundingAgent.currentRealmRecord;
       Q(HostEnsureCanCompileStrings(evalRealm, evalRealm));
-      return Q(PerformEval(evalText, evalRealm, strictCaller, true));
+      return Q(yield* PerformEval(evalText, evalRealm, strictCaller, true));
     }
   }
   const thisCall = CallExpression;

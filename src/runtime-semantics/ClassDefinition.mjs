@@ -52,14 +52,14 @@ function* ClassDefinitionEvaluation({ ClassHeritage, ClassBody }, className) {
     surroundingAgent.runningExecutionContext.LexicalEnvironment = classScope;
     const superclassRef = yield* Evaluate(ClassHeritage);
     surroundingAgent.runningExecutionContext.LexicalEnvironment = lex;
-    const superclass = Q(GetValue(superclassRef));
+    const superclass = Q(yield* GetValue(superclassRef));
     if (Type(superclass) === 'Null') {
       protoParent = Value.null;
       constructorParent = surroundingAgent.intrinsic('%FunctionPrototype%');
     } else if (IsConstructor(superclass) === Value.false) {
       return surroundingAgent.Throw('TypeError');
     } else {
-      protoParent = Q(Get(superclass, new Value('prototype')));
+      protoParent = Q(yield* Get(superclass, new Value('prototype')));
       if (Type(protoParent) !== 'Object' && Type(protoParent) !== 'Null') {
         return surroundingAgent.Throw('TypeError');
       }
@@ -89,9 +89,9 @@ function* ClassDefinitionEvaluation({ ClassHeritage, ClassBody }, className) {
   if (ClassHeritage) {
     F.ConstructorKind = 'derived';
   }
-  MakeConstructor(F, false, proto);
-  MakeClassConstructor(F);
-  CreateMethodProperty(proto, new Value('constructor'), F);
+  yield* MakeConstructor(F, false, proto);
+  yield* MakeClassConstructor(F);
+  yield* CreateMethodProperty(proto, new Value('constructor'), F);
   let methods;
   if (!ClassBody) {
     methods = [];
@@ -139,9 +139,9 @@ export function* Evaluate_ClassExpression(ClassExpression) {
   const value = yield* ClassDefinitionEvaluation(ClassTail, className);
   ReturnIfAbrupt(value);
   if (Type(className) !== 'Undefined') {
-    const hasNameProperty = Q(HasOwnProperty(value, new Value('name')));
+    const hasNameProperty = Q(yield* HasOwnProperty(value, new Value('name')));
     if (hasNameProperty === Value.false) {
-      SetFunctionName(value, className);
+      yield* SetFunctionName(value, className);
     }
   }
   value.SourceText = sourceTextMatchedBy(ClassExpression);
@@ -172,9 +172,9 @@ export function* BindingClassDeclarationEvaluation_ClassDeclaration(ClassDeclara
   const value = yield* ClassDefinitionEvaluation(ClassTail, className);
   ReturnIfAbrupt(value);
   if (BindingIdentifier) {
-    const hasNameProperty = Q(HasOwnProperty(value, new Value('name')));
+    const hasNameProperty = Q(yield* HasOwnProperty(value, new Value('name')));
     if (hasNameProperty === Value.false) {
-      SetFunctionName(value, className);
+      yield* SetFunctionName(value, className);
     }
     const env = surroundingAgent.runningExecutionContext.LexicalEnvironment;
     Q(InitializeBoundName(className, value, env));

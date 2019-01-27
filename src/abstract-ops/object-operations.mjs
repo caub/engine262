@@ -35,26 +35,26 @@ import { msg } from '../helpers.mjs';
 // 7.3 #sec-operations-on-objects
 
 // 7.3.1 #sec-get-o-p
-export function Get(O, P) {
+export function* Get(O, P) {
   Assert(Type(O) === 'Object');
   Assert(IsPropertyKey(P));
   // TODO: This should just return Q(O.Get(P, O))
-  return new NormalCompletion(Q(O.Get(P, O)));
+  return new NormalCompletion(Q(yield* O.Get(P, O)));
 }
 
 // 7.3.2 #sec-getv
-export function GetV(V, P) {
+export function* GetV(V, P) {
   Assert(IsPropertyKey(P));
-  const O = Q(ToObject(V));
-  return Q(O.Get(P, V));
+  const O = Q(yield* ToObject(V));
+  return Q(yield* O.Get(P, V));
 }
 
 // 7.3.3 #sec-set-o-p-v-throw
-export function Set(O, P, V, Throw) {
+export function* Set(O, P, V, Throw) {
   Assert(Type(O) === 'Object');
   Assert(IsPropertyKey(P));
   Assert(Type(Throw) === 'Boolean');
-  const success = Q(O.Set(P, V, O));
+  const success = Q(yield* O.Set(P, V, O));
   if (success === Value.false && Throw === Value.true) {
     return surroundingAgent.Throw('TypeError', msg('CannotSetProperty', P, O));
   }
@@ -62,7 +62,7 @@ export function Set(O, P, V, Throw) {
 }
 
 // 7.3.4 #sec-createdataproperty
-export function CreateDataProperty(O, P, V) {
+export function* CreateDataProperty(O, P, V) {
   Assert(Type(O) === 'Object');
   Assert(IsPropertyKey(P));
 
@@ -72,11 +72,11 @@ export function CreateDataProperty(O, P, V) {
     Enumerable: Value.true,
     Configurable: Value.true,
   });
-  return Q(O.DefineOwnProperty(P, newDesc));
+  return Q(yield* O.DefineOwnProperty(P, newDesc));
 }
 
 // 7.3.5 #sec-createmethodproperty
-export function CreateMethodProperty(O, P, V) {
+export function* CreateMethodProperty(O, P, V) {
   Assert(Type(O) === 'Object');
   Assert(IsPropertyKey(P));
 
@@ -86,14 +86,14 @@ export function CreateMethodProperty(O, P, V) {
     Enumerable: Value.false,
     Configurable: Value.true,
   });
-  return Q(O.DefineOwnProperty(P, newDesc));
+  return Q(yield* O.DefineOwnProperty(P, newDesc));
 }
 
 // 7.3.6 #sec-createdatapropertyorthrow
-export function CreateDataPropertyOrThrow(O, P, V) {
+export function* CreateDataPropertyOrThrow(O, P, V) {
   Assert(Type(O) === 'Object');
   Assert(IsPropertyKey(P));
-  const success = Q(CreateDataProperty(O, P, V));
+  const success = Q(yield* CreateDataProperty(O, P, V));
   if (success === Value.false) {
     // TODO: throw with an error message
     return surroundingAgent.Throw('TypeError');
@@ -102,10 +102,10 @@ export function CreateDataPropertyOrThrow(O, P, V) {
 }
 
 // 7.3.7 #sec-definepropertyorthrow
-export function DefinePropertyOrThrow(O, P, desc) {
+export function* DefinePropertyOrThrow(O, P, desc) {
   Assert(Type(O) === 'Object');
   Assert(IsPropertyKey(P));
-  const success = Q(O.DefineOwnProperty(P, desc));
+  const success = Q(yield* O.DefineOwnProperty(P, desc));
   if (success === Value.false) {
     // TODO: throw with an error message
     return surroundingAgent.Throw('TypeError');
@@ -114,10 +114,10 @@ export function DefinePropertyOrThrow(O, P, desc) {
 }
 
 // 7.3.8 #sec-deletepropertyorthrow
-export function DeletePropertyOrThrow(O, P) {
+export function* DeletePropertyOrThrow(O, P) {
   Assert(Type(O) === 'Object');
   Assert(IsPropertyKey(P));
-  const success = Q(O.Delete(P));
+  const success = Q(yield* O.Delete(P));
   if (success === Value.false) {
     // TODO: throw with an error message
     return surroundingAgent.Throw('TypeError');
@@ -126,9 +126,9 @@ export function DeletePropertyOrThrow(O, P) {
 }
 
 // 7.3.9 #sec-getmethod
-export function GetMethod(V, P) {
+export function* GetMethod(V, P) {
   Assert(IsPropertyKey(P));
-  const func = Q(GetV(V, P));
+  const func = Q(yield* GetV(V, P));
   if (func === Value.null || func === Value.undefined) {
     return Value.undefined;
   }
@@ -139,17 +139,17 @@ export function GetMethod(V, P) {
 }
 
 // 7.3.10 #sec-hasproperty
-export function HasProperty(O, P) {
+export function* HasProperty(O, P) {
   Assert(Type(O) === 'Object');
   Assert(IsPropertyKey(P));
-  return Q(O.HasProperty(P));
+  return Q(yield* O.HasProperty(P));
 }
 
 // 7.3.11 #sec-hasownproperty
-export function HasOwnProperty(O, P) {
+export function* HasOwnProperty(O, P) {
   Assert(Type(O) === 'Object');
   Assert(IsPropertyKey(P));
-  const desc = Q(O.GetOwnProperty(P));
+  const desc = Q(yield* O.GetOwnProperty(P));
   if (desc === Value.undefined) {
     return Value.false;
   }
@@ -157,7 +157,7 @@ export function HasOwnProperty(O, P) {
 }
 
 // 7.3.12 #sec-call
-export function Call(F, V, argumentsList) {
+export function* Call(F, V, argumentsList) {
   if (!argumentsList) {
     argumentsList = [];
   }
@@ -167,11 +167,11 @@ export function Call(F, V, argumentsList) {
     return surroundingAgent.Throw('TypeError', msg('NotAFunction', F));
   }
 
-  return Q(F.Call(V, argumentsList));
+  return Q(yield* F.Call(V, argumentsList));
 }
 
 // 7.3.13 #sec-construct
-export function Construct(F, argumentsList, newTarget) {
+export function* Construct(F, argumentsList, newTarget) {
   if (!newTarget) {
     newTarget = F;
   }
@@ -180,33 +180,33 @@ export function Construct(F, argumentsList, newTarget) {
   }
   Assert(IsConstructor(F) === Value.true);
   Assert(IsConstructor(newTarget) === Value.true);
-  return Q(F.Construct(argumentsList, newTarget));
+  return Q(yield* F.Construct(argumentsList, newTarget));
 }
 
 // 7.3.14 #sec-setintegritylevel
-export function SetIntegrityLevel(O, level) {
+export function* SetIntegrityLevel(O, level) {
   Assert(Type(O) === 'Object');
   Assert(level === 'sealed' || level === 'frozen');
-  const status = Q(O.PreventExtensions());
+  const status = Q(yield* O.PreventExtensions());
   if (status === Value.false) {
     return Value.false;
   }
-  const keys = Q(O.OwnPropertyKeys());
+  const keys = Q(yield* O.OwnPropertyKeys());
   if (level === 'sealed') {
     for (const k of keys) {
-      Q(DefinePropertyOrThrow(O, k, Descriptor({ Configurable: Value.false })));
+      Q(yield* DefinePropertyOrThrow(O, k, Descriptor({ Configurable: Value.false })));
     }
   } else if (level === 'frozen') {
     for (const k of keys) {
-      const currentDesc = Q(O.GetOwnProperty(k));
+      const currentDesc = Q(yield* O.GetOwnProperty(k));
       if (currentDesc !== Value.undefined) {
         let desc;
-        if (IsAccessorDescriptor(currentDesc) === true) {
+        if ((yield* IsAccessorDescriptor(currentDesc)) === true) {
           desc = Descriptor({ Configurable: Value.false });
         } else {
           desc = Descriptor({ Configurable: Value.false, Writable: Value.false });
         }
-        Q(DefinePropertyOrThrow(O, k, desc));
+        Q(yield* DefinePropertyOrThrow(O, k, desc));
       }
     }
   }
@@ -214,21 +214,21 @@ export function SetIntegrityLevel(O, level) {
 }
 
 // 7.3.15 #sec-testintegritylevel
-export function TestIntegrityLevel(O, level) {
+export function* TestIntegrityLevel(O, level) {
   Assert(Type(O) === 'Object');
   Assert(level === 'sealed' || level === 'frozen');
   const status = Q(IsExtensible(O));
   if (status === Value.true) {
     return Value.false;
   }
-  const keys = Q(O.OwnPropertyKeys());
+  const keys = Q(yield* O.OwnPropertyKeys());
   for (const k of keys) {
-    const currentDesc = Q(O.GetOwnProperty(k));
+    const currentDesc = Q(yield* O.GetOwnProperty(k));
     if (currentDesc !== Value.undefined) {
       if (currentDesc.Configurable === Value.true) {
         return Value.false;
       }
-      if (level === 'frozen' && IsDataDescriptor(currentDesc)) {
+      if (level === 'frozen' && (yield* IsDataDescriptor(currentDesc))) {
         if (currentDesc.Writable === Value.true) {
           return Value.false;
         }
@@ -239,13 +239,13 @@ export function TestIntegrityLevel(O, level) {
 }
 
 // 7.3.16 #sec-createarrayfromlist
-export function CreateArrayFromList(elements) {
+export function* CreateArrayFromList(elements) {
   Assert(elements.every((e) => e instanceof Value));
-  const array = X(ArrayCreate(new Value(0)));
+  const array = X(yield* ArrayCreate(new Value(0)));
   let n = 0;
   for (const e of elements) {
-    const nStr = X(ToString(new Value(n)));
-    const status = X(CreateDataProperty(array, nStr, e));
+    const nStr = X(yield* ToString(new Value(n)));
+    const status = X(yield* CreateDataProperty(array, nStr, e));
     Assert(status === Value.true);
     n += 1;
   }
@@ -253,7 +253,7 @@ export function CreateArrayFromList(elements) {
 }
 
 // 7.3.17 #sec-createlistfromarraylike
-export function CreateListFromArrayLike(obj, elementTypes) {
+export function* CreateListFromArrayLike(obj, elementTypes) {
   if (!elementTypes) {
     elementTypes = ['Undefined', 'Null', 'Boolean', 'String', 'Symbol', 'Number', 'Object'];
   }
@@ -261,13 +261,13 @@ export function CreateListFromArrayLike(obj, elementTypes) {
     // TODO: throw with an error message
     return surroundingAgent.Throw('TypeError');
   }
-  const lenProp = Q(Get(obj, new Value('length')));
-  const len = Q(ToLength(lenProp)).numberValue();
+  const lenProp = Q(yield* Get(obj, new Value('length')));
+  const len = Q(yield* ToLength(lenProp)).numberValue();
   const list = [];
   let index = 0;
   while (index < len) {
-    const indexName = X(ToString(new Value(index)));
-    const next = Q(Get(obj, indexName));
+    const indexName = X(yield* ToString(new Value(index)));
+    const next = Q(yield* Get(obj, indexName));
     if (!elementTypes.includes(Type(next))) {
       // TODO: throw with an error message
       return surroundingAgent.Throw('TypeError');
@@ -279,34 +279,34 @@ export function CreateListFromArrayLike(obj, elementTypes) {
 }
 
 // 7.3.18 #sec-invoke
-export function Invoke(V, P, argumentsList) {
+export function* Invoke(V, P, argumentsList) {
   Assert(IsPropertyKey(P));
   if (!argumentsList) {
     argumentsList = [];
   }
-  const func = Q(GetV(V, P));
-  return Q(Call(func, V, argumentsList));
+  const func = Q(yield* GetV(V, P));
+  return Q(yield* Call(func, V, argumentsList));
 }
 
 // 7.3.19 #sec-ordinaryhasinstance
-export function OrdinaryHasInstance(C, O) {
+export function* OrdinaryHasInstance(C, O) {
   if (IsCallable(C) === Value.false) {
     return Value.false;
   }
   if ('BoundTargetFunction' in C) {
     const BC = C.BoundTargetFunction;
-    return Q(InstanceofOperator(O, BC));
+    return Q(yield* InstanceofOperator(O, BC));
   }
   if (Type(O) !== 'Object') {
     return Value.false;
   }
-  const P = Q(Get(C, new Value('prototype')));
+  const P = Q(yield* Get(C, new Value('prototype')));
   if (Type(P) !== 'Object') {
     // TODO: throw with an error message
     return surroundingAgent.Throw('TypeError');
   }
   while (true) {
-    O = Q(O.GetPrototypeOf());
+    O = Q(yield* O.GetPrototypeOf());
     if (O === Value.null) {
       return Value.false;
     }
@@ -317,9 +317,9 @@ export function OrdinaryHasInstance(C, O) {
 }
 
 // 7.3.20 #sec-speciesconstructor
-export function SpeciesConstructor(O, defaultConstructor) {
+export function* SpeciesConstructor(O, defaultConstructor) {
   Assert(Type(O) === 'Object');
-  const C = Q(Get(O, new Value('constructor')));
+  const C = Q(yield* Get(O, new Value('constructor')));
   if (C === Value.undefined) {
     return defaultConstructor;
   }
@@ -327,7 +327,7 @@ export function SpeciesConstructor(O, defaultConstructor) {
     // TODO: throw with an error message
     return surroundingAgent.Throw('TypeError');
   }
-  const S = Q(Get(C, wellKnownSymbols.species));
+  const S = Q(yield* Get(C, wellKnownSymbols.species));
   if (S === Value.undefined || S === Value.null) {
     return defaultConstructor;
   }
@@ -339,23 +339,23 @@ export function SpeciesConstructor(O, defaultConstructor) {
 }
 
 // 7.3.21 #sec-enumerableownpropertynames
-export function EnumerableOwnPropertyNames(O, kind) {
+export function* EnumerableOwnPropertyNames(O, kind) {
   Assert(Type(O) === 'Object');
-  const ownKeys = Q(O.OwnPropertyKeys());
+  const ownKeys = Q(yield* O.OwnPropertyKeys());
   const properties = [];
   for (const key of ownKeys) {
     if (Type(key) === 'String') {
-      const desc = Q(O.GetOwnProperty(key));
+      const desc = Q(yield* O.GetOwnProperty(key));
       if (desc !== Value.undefined && desc.Enumerable === Value.true) {
         if (kind === 'key') {
           properties.push(key);
         } else {
-          const value = Q(Get(O, key));
+          const value = Q(yield* Get(O, key));
           if (kind === 'value') {
             properties.push(value);
           } else {
             Assert(kind === 'key+value');
-            const entry = CreateArrayFromList([key, value]);
+            const entry = yield* CreateArrayFromList([key, value]);
             properties.push(entry);
           }
         }
@@ -369,7 +369,7 @@ export function EnumerableOwnPropertyNames(O, kind) {
 }
 
 // 7.3.22 #sec-getfunctionrealm
-export function GetFunctionRealm(obj) {
+export function* GetFunctionRealm(obj) {
   Assert(IsCallable(obj) === Value.true);
   if ('Realm' in obj) {
     return obj.Realm;
@@ -377,7 +377,7 @@ export function GetFunctionRealm(obj) {
 
   if ('BoundTargetFunction' in obj) {
     const target = obj.BoundTargetFunction;
-    return Q(GetFunctionRealm(target));
+    return Q(yield* GetFunctionRealm(target));
   }
 
   if (obj instanceof ProxyExoticObjectValue) {
@@ -385,21 +385,21 @@ export function GetFunctionRealm(obj) {
       return surroundingAgent.Throw('TypeError', msg('ProxyRevoked', 'GetFunctionRealm'));
     }
     const proxyTarget = obj.ProxyTarget;
-    return Q(GetFunctionRealm(proxyTarget));
+    return Q(yield* GetFunctionRealm(proxyTarget));
   }
 
   return surroundingAgent.currentRealmRecord;
 }
 
 // 7.3.23 #sec-copydataproperties
-export function CopyDataProperties(target, source, excludedItems) {
+export function* CopyDataProperties(target, source, excludedItems) {
   Assert(Type(target) === 'Object');
   Assert(excludedItems.every((i) => IsPropertyKey(i)));
   if (source === Value.undefined || source === Value.null) {
     return target;
   }
-  const from = X(ToObject(source));
-  const keys = Q(from.OwnPropertyKeys());
+  const from = X(yield* ToObject(source));
+  const keys = Q(yield* from.OwnPropertyKeys());
   for (const nextKey of keys) {
     let excluded = false;
     for (const e of excludedItems) {
@@ -410,8 +410,8 @@ export function CopyDataProperties(target, source, excludedItems) {
     if (excluded === false) {
       const desc = Q(from.GetOwnProperty(nextKey));
       if (desc !== Value.undefined && desc.Enumerable === Value.true) {
-        const propValue = Q(Get(from, nextKey));
-        X(CreateDataProperty(target, nextKey, propValue));
+        const propValue = Q(yield* Get(from, nextKey));
+        X(yield* CreateDataProperty(target, nextKey, propValue));
       }
     }
   }

@@ -28,30 +28,33 @@ import { Q, X } from '../completion.mjs';
 import { msg } from '../helpers.mjs';
 import { assignProps } from './Bootstrap.mjs';
 
-function FunctionProto_apply([thisArg = Value.undefined, argArray = Value.undefined], { thisValue: func }) {
+function* FunctionProto_apply(
+  [thisArg = Value.undefined, argArray = Value.undefined],
+  { thisValue: func },
+) {
   if (IsCallable(func) === Value.false) {
     return surroundingAgent.Throw('TypeError');
   }
   if (Type(argArray) === 'Undefined' || Type(argArray) === 'Null') {
     PrepareForTailCall();
-    return Q(Call(func, thisArg));
+    return Q(yield* Call(func, thisArg));
   }
-  const argList = Q(CreateListFromArrayLike(argArray));
+  const argList = Q(yield* CreateListFromArrayLike(argArray));
   PrepareForTailCall();
-  return Q(Call(func, thisArg, argList));
+  return Q(yield* Call(func, thisArg, argList));
 }
 
-function BoundFunctionExoticObjectCall(thisArgument, argumentsList) {
+function* BoundFunctionExoticObjectCall(thisArgument, argumentsList) {
   const F = this;
 
   const target = F.BoundTargetFunction;
   const boundThis = F.BoundThis;
   const boundArgs = F.BoundArguments;
   const args = [...boundArgs, ...argumentsList];
-  return Q(Call(target, boundThis, args));
+  return Q(yield* Call(target, boundThis, args));
 }
 
-function BoundFunctionExoticObjectConstruct(argumentsList, newTarget) {
+function* BoundFunctionExoticObjectConstruct(argumentsList, newTarget) {
   const F = this;
 
   const target = F.BoundTargetFunction;
@@ -61,13 +64,13 @@ function BoundFunctionExoticObjectConstruct(argumentsList, newTarget) {
   if (SameValue(F, newTarget) === Value.true) {
     newTarget = target;
   }
-  return Q(Construct(target, args, newTarget));
+  return Q(yield* Construct(target, args, newTarget));
 }
 
 // 9.4.1.3 #sec-boundfunctioncreate
-function BoundFunctionCreate(targetFunction, boundThis, boundArgs) {
+function* BoundFunctionCreate(targetFunction, boundThis, boundArgs) {
   Assert(Type(targetFunction) === 'Object');
-  const proto = Q(targetFunction.GetPrototypeOf());
+  const proto = Q(yield* targetFunction.GetPrototypeOf());
   const obj = new ObjectValue();
   obj.Call = BoundFunctionExoticObjectCall;
   if (IsConstructor(targetFunction) === Value.true) {
@@ -81,37 +84,37 @@ function BoundFunctionCreate(targetFunction, boundThis, boundArgs) {
   return obj;
 }
 
-function FunctionProto_bind([thisArg = Value.undefined, ...args], { thisValue }) {
+function* FunctionProto_bind([thisArg = Value.undefined, ...args], { thisValue }) {
   const Target = thisValue;
   if (IsCallable(Target) === Value.false) {
     return surroundingAgent.Throw('TypeError');
   }
   // Let args be a new (possibly empty) List consisting of all
   // of the argument values provided after thisArg in order.
-  const F = Q(BoundFunctionCreate(Target, thisArg, args));
-  const targetHasLength = Q(HasOwnProperty(Target, new Value('length')));
+  const F = Q(yield* BoundFunctionCreate(Target, thisArg, args));
+  const targetHasLength = Q(yield* HasOwnProperty(Target, new Value('length')));
   let L;
   if (targetHasLength === Value.true) {
-    let targetLen = Q(Get(Target, new Value('length')));
+    let targetLen = Q(yield* Get(Target, new Value('length')));
     if (Type(targetLen) !== 'Number') {
       L = 0;
     } else {
-      targetLen = Q(ToInteger(targetLen)).numberValue();
+      targetLen = Q(yield* ToInteger(targetLen)).numberValue();
       L = Math.max(0, targetLen - args.length);
     }
   } else {
     L = 0;
   }
-  X(SetFunctionLength(F, new Value(L)));
-  let targetName = Q(Get(Target, new Value('name')));
+  X(yield* SetFunctionLength(F, new Value(L)));
+  let targetName = Q(yield* Get(Target, new Value('name')));
   if (Type(targetName) !== 'String') {
     targetName = new Value('');
   }
-  SetFunctionName(F, targetName, new Value('bound'));
+  yield* SetFunctionName(F, targetName, new Value('bound'));
   return F;
 }
 
-function FunctionProto_call([thisArg = Value.undefined, ...args], { thisValue: func }) {
+function* FunctionProto_call([thisArg = Value.undefined, ...args], { thisValue: func }) {
   if (IsCallable(func) === Value.false) {
     return surroundingAgent.Throw('TypeError');
   }
@@ -120,10 +123,10 @@ function FunctionProto_call([thisArg = Value.undefined, ...args], { thisValue: f
     argList.push(arg);
   }
   PrepareForTailCall();
-  return Q(Call(func, thisArg, argList));
+  return Q(yield* Call(func, thisArg, argList));
 }
 
-function FunctionProto_toString(args, { thisValue: func }) {
+function* FunctionProto_toString(args, { thisValue: func }) {
   if ('BoundTargetFunction' in func || 'nativeFunction' in func) {
     const name = func.properties.get(new Value('name'));
     if (name !== undefined) {
@@ -140,9 +143,9 @@ function FunctionProto_toString(args, { thisValue: func }) {
   return surroundingAgent.Throw('TypeError', msg('NotAFunction', func));
 }
 
-function FunctionProto_hasInstance([V = Value.undefined], { thisValue }) {
+function* FunctionProto_hasInstance([V = Value.undefined], { thisValue }) {
   const F = thisValue;
-  return Q(OrdinaryHasInstance(F, V));
+  return Q(yield* OrdinaryHasInstance(F, V));
 }
 
 export function CreateFunctionPrototype(realmRec) {

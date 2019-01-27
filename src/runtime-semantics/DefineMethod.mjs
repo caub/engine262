@@ -28,7 +28,14 @@ export function* DefineMethod(MethodDefinition, object, functionPrototype) {
     kind = 'Method';
     prototype = surroundingAgent.intrinsic('%FunctionPrototype%');
   }
-  const closure = FunctionCreate(kind, UniqueFormalParameters, MethodDefinition.value, scope, strict, prototype);
+  const closure = yield* FunctionCreate(
+    kind,
+    UniqueFormalParameters,
+    MethodDefinition.value,
+    scope,
+    strict,
+    prototype,
+  );
   X(MakeMethod(closure, object));
   closure.SourceText = sourceTextMatchedBy(MethodDefinition);
   return {

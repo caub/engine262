@@ -18,15 +18,13 @@ import {
 
 // 13.3.3.7 #sec-destructuring-binding-patterns-runtime-semantics-restbindinginitialization
 //   BindingRestProperty : `...` BindingIdentifier
-export function RestBindingInitialization_BindingRestProperty(
-  BindingRestProperty, value, environment, excludedNames,
-) {
+export function* RestBindingInitialization_BindingRestProperty(BindingRestProperty, value, environment, excludedNames) {
   const BindingIdentifier = BindingRestProperty.argument;
-  const lhs = Q(ResolveBinding(new Value(BindingIdentifier.name), environment, BindingIdentifier.strict));
+  const lhs = Q(yield* ResolveBinding(new Value(BindingIdentifier.name), environment, BindingIdentifier.strict));
   const restObj = ObjectCreate(surroundingAgent.intrinsic('%ObjectPrototype%'));
-  Q(CopyDataProperties(restObj, value, excludedNames));
+  Q(yield* CopyDataProperties(restObj, value, excludedNames));
   if (Type(environment) === 'Undefined') {
-    return PutValue(lhs, restObj);
+    return yield* PutValue(lhs, restObj);
   }
-  return InitializeReferencedBinding(lhs, restObj);
+  return yield* InitializeReferencedBinding(lhs, restObj);
 }

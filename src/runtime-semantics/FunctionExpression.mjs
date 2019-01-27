@@ -12,7 +12,7 @@ import {
 import { NewDeclarativeEnvironment } from '../environment.mjs';
 import { Value } from '../value.mjs';
 
-function Evaluate_FunctionExpression_BindingIdentifier(FunctionExpression) {
+function* Evaluate_FunctionExpression_BindingIdentifier(FunctionExpression) {
   const {
     id: BindingIdentifier,
     params: FormalParameters,
@@ -24,18 +24,18 @@ function Evaluate_FunctionExpression_BindingIdentifier(FunctionExpression) {
   const funcEnv = NewDeclarativeEnvironment(scope);
   const envRec = funcEnv.EnvironmentRecord;
   const name = new Value(BindingIdentifier.name);
-  envRec.CreateImmutableBinding(name, Value.false);
-  const closure = FunctionCreate('Normal', FormalParameters, FunctionExpression, funcEnv, strict);
-  MakeConstructor(closure);
-  SetFunctionName(closure, name);
+  yield* envRec.CreateImmutableBinding(name, Value.false);
+  const closure = yield* FunctionCreate('Normal', FormalParameters, FunctionExpression, funcEnv, strict);
+  yield* MakeConstructor(closure);
+  yield* SetFunctionName(closure, name);
   closure.SourceText = sourceTextMatchedBy(FunctionExpression);
-  envRec.InitializeBinding(name, closure);
+  yield* envRec.InitializeBinding(name, closure);
   return closure;
 }
 
-export function Evaluate_FunctionExpression(FunctionExpression) {
+export function* Evaluate_FunctionExpression(FunctionExpression) {
   if (isFunctionExpressionWithBindingIdentifier(FunctionExpression)) {
-    return Evaluate_FunctionExpression_BindingIdentifier(FunctionExpression);
+    return yield* Evaluate_FunctionExpression_BindingIdentifier(FunctionExpression);
   }
 
   const FormalParameters = FunctionExpression.params;
@@ -44,8 +44,8 @@ export function Evaluate_FunctionExpression(FunctionExpression) {
   // code, let strict be true. Otherwise let strict be false.
   const strict = isStrictModeCode(FunctionExpression);
   const scope = surroundingAgent.runningExecutionContext.LexicalEnvironment;
-  const closure = FunctionCreate('Normal', FormalParameters, FunctionExpression, scope, strict);
-  MakeConstructor(closure);
+  const closure = yield* FunctionCreate('Normal', FormalParameters, FunctionExpression, scope, strict);
+  yield* MakeConstructor(closure);
   closure.SourceText = sourceTextMatchedBy(FunctionExpression);
   return closure;
 }

@@ -12,73 +12,73 @@ import { IfAbruptRejectPromise, X } from '../completion.mjs';
 import { BootstrapPrototype } from './Bootstrap.mjs';
 
 // 25.1.4.2.1 #sec-%asyncfromsynciteratorprototype%.next
-function AsyncFromSyncIteratorPrototype_next([value = Value.undefined], { thisValue }) {
+function* AsyncFromSyncIteratorPrototype_next([value = Value.undefined], { thisValue }) {
   const O = thisValue;
-  const promiseCapability = X(NewPromiseCapability(surroundingAgent.intrinsic('%Promise%')));
+  const promiseCapability = X(yield* NewPromiseCapability(surroundingAgent.intrinsic('%Promise%')));
   if (Type(O) !== 'Object' || !('SyncIteratorRecord' in O)) {
     const invalidIteratorError = surroundingAgent.Throw('TypeError').Value;
-    X(Call(promiseCapability.Reject, Value.undefined, [invalidIteratorError]));
+    X(yield* Call(promiseCapability.Reject, Value.undefined, [invalidIteratorError]));
     return promiseCapability.Promise;
   }
   const syncIteratorRecord = O.SyncIteratorRecord;
-  const result = IteratorNext(syncIteratorRecord, value);
+  const result = yield* IteratorNext(syncIteratorRecord, value);
   IfAbruptRejectPromise(result, promiseCapability);
-  return X(AsyncFromSyncIteratorContinuation(result, promiseCapability));
+  return X(yield* AsyncFromSyncIteratorContinuation(result, promiseCapability));
 }
 
 // 25.1.4.2.2 #sec-%asyncfromsynciteratorprototype%.return
-function AsyncFromSyncIteratorPrototype_return([value = Value.undefined], { thisValue }) {
+function* AsyncFromSyncIteratorPrototype_return([value = Value.undefined], { thisValue }) {
   const O = thisValue;
-  const promiseCapability = X(NewPromiseCapability(surroundingAgent.intrinsic('%Promise%')));
+  const promiseCapability = X(yield* NewPromiseCapability(surroundingAgent.intrinsic('%Promise%')));
   if (Type(O) !== 'Object' || !('SyncIteratorRecord' in O)) {
     const invalidIteratorError = surroundingAgent.Throw('TypeError').Value;
-    X(Call(promiseCapability.Reject, Value.undefined, [invalidIteratorError]));
+    X(yield* Call(promiseCapability.Reject, Value.undefined, [invalidIteratorError]));
     return promiseCapability.Promise;
   }
   const syncIterator = O.SyncIteratorRecord.Iterator;
-  const ret = GetMethod(syncIterator, new Value('return'));
+  const ret = yield* GetMethod(syncIterator, new Value('return'));
   IfAbruptRejectPromise(ret, promiseCapability);
   if (ret === Value.undefined) {
-    const iterResult = X(CreateIterResultObject(value, Value.true));
-    X(Call(promiseCapability.Resolve, Value.undefined, [iterResult]));
+    const iterResult = X(yield* CreateIterResultObject(value, Value.true));
+    X(yield* Call(promiseCapability.Resolve, Value.undefined, [iterResult]));
     return promiseCapability.Promise;
   }
-  const result = Call(ret, syncIterator, [value]);
+  const result = yield* Call(ret, syncIterator, [value]);
   IfAbruptRejectPromise(result, promiseCapability);
   if (Type(result) !== 'Object') {
-    X(Call(promiseCapability.Reject, Value.undefined, [
+    X(yield* Call(promiseCapability.Reject, Value.undefined, [
       surroundingAgent.Throw('TypeError', 'iterator result was not an object').Value,
     ]));
     return promiseCapability.Promise;
   }
-  return X(AsyncFromSyncIteratorContinuation(result, promiseCapability));
+  return X(yield* AsyncFromSyncIteratorContinuation(result, promiseCapability));
 }
 
 // 25.1.4.2.3 #sec-%asyncfromsynciteratorprototype%.throw
-function AsyncFromSyncIteratorPrototype_throw([value = Value.undefined], { thisValue }) {
+function* AsyncFromSyncIteratorPrototype_throw([value = Value.undefined], { thisValue }) {
   const O = thisValue;
-  const promiseCapability = X(NewPromiseCapability(surroundingAgent.intrinsic('%Promise%')));
+  const promiseCapability = X(yield* NewPromiseCapability(surroundingAgent.intrinsic('%Promise%')));
   if (Type(O) !== 'Object' || !('SyncIteratorRecord' in O)) {
     const invalidIteratorError = surroundingAgent.Throw('TypeError').Value;
-    X(Call(promiseCapability.Reject, Value.undefined, [invalidIteratorError]));
+    X(yield* Call(promiseCapability.Reject, Value.undefined, [invalidIteratorError]));
     return promiseCapability.Promise;
   }
   const syncIterator = O.SyncIteratorRecord.Iterator;
-  const thr = GetMethod(syncIterator, new Value('throw'));
+  const thr = yield* GetMethod(syncIterator, new Value('throw'));
   IfAbruptRejectPromise(thr, promiseCapability);
   if (thr === Value.undefined) {
-    X(Call(promiseCapability.Reject, Value.undefined, [value]));
+    X(yield* Call(promiseCapability.Reject, Value.undefined, [value]));
     return promiseCapability.Promise;
   }
-  const result = Call(thr, syncIterator, [value]);
+  const result = yield* Call(thr, syncIterator, [value]);
   IfAbruptRejectPromise(result, promiseCapability);
   if (Type(result) !== 'Object') {
-    X(Call(promiseCapability.Reject, Value.undefined, [
+    X(yield* Call(promiseCapability.Reject, Value.undefined, [
       surroundingAgent.Throw('TypeError', 'iterator result was not an object').Value,
     ]));
     return promiseCapability.Promise;
   }
-  return X(AsyncFromSyncIteratorContinuation(result, promiseCapability));
+  return X(yield* AsyncFromSyncIteratorContinuation(result, promiseCapability));
 }
 
 export function CreateAsyncFromSyncIteratorPrototype(realmRec) {

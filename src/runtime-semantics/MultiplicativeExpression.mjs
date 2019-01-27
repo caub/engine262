@@ -9,9 +9,9 @@ import {
 } from '../value.mjs';
 import { OutOfRange } from '../helpers.mjs';
 
-export function EvaluateBinopValues_MultiplicativeExpression(MultiplicativeOperator, lval, rval) {
-  const lnum = Q(ToNumber(lval));
-  const rnum = Q(ToNumber(rval));
+export function* EvaluateBinopValues_MultiplicativeExpression(MultiplicativeOperator, lval, rval) {
+  const lnum = Q(yield* ToNumber(lval));
+  const rnum = Q(yield* ToNumber(rval));
 
   // Return the result of applying the MultiplicativeOperator (*, /, or %)
   // to lnum and rnum as specified in 12.7.3.1, 12.7.3.2, or 12.7.3.3.
@@ -34,10 +34,10 @@ export function* Evaluate_MultiplicativeExpression({
   right: ExponentiationExpression,
 }) {
   const left = yield* Evaluate(MultiplicativeExpression);
-  const leftValue = Q(GetValue(left));
+  const leftValue = Q(yield* GetValue(left));
   const right = yield* Evaluate(ExponentiationExpression);
-  const rightValue = Q(GetValue(right));
-  return EvaluateBinopValues_MultiplicativeExpression(
+  const rightValue = Q(yield* GetValue(right));
+  return yield* EvaluateBinopValues_MultiplicativeExpression(
     MultiplicativeOperator, leftValue, rightValue,
   );
 }

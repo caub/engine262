@@ -17,12 +17,12 @@ import { Type, Value } from '../value.mjs';
 // 24.3 #sec-dataview-objects
 
 // 24.3.1.1 #sec-getviewvalue
-export function GetViewValue(view, requestIndex, isLittleEndian, type) {
+export function* GetViewValue(view, requestIndex, isLittleEndian, type) {
   if (Type(view) !== 'Object' || !('DataView' in view)) {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'DataView', view));
   }
   Assert('ViewedArrayBuffer' in view);
-  const getIndex = Q(ToIndex(requestIndex)).numberValue();
+  const getIndex = Q(yield* ToIndex(requestIndex)).numberValue();
   isLittleEndian = X(ToBoolean(isLittleEndian));
   const buffer = view.ViewedArrayBuffer;
   if (IsDetachedBuffer(buffer)) {
@@ -39,13 +39,13 @@ export function GetViewValue(view, requestIndex, isLittleEndian, type) {
 }
 
 // 24.3.1.2 #sec-setviewvalue
-export function SetViewValue(view, requestIndex, isLittleEndian, type, value) {
+export function* SetViewValue(view, requestIndex, isLittleEndian, type, value) {
   if (Type(view) !== 'Object' || !('DataView' in view)) {
     return surroundingAgent.Throw('TypeError', msg('NotATypeObject', 'DataView', view));
   }
   Assert('ViewedArrayBuffer' in view);
-  const getIndex = Q(ToIndex(requestIndex)).numberValue();
-  const numberValue = Q(ToNumber(value));
+  const getIndex = Q(yield* ToIndex(requestIndex)).numberValue();
+  const numberValue = Q(yield* ToNumber(value));
   isLittleEndian = X(ToBoolean(isLittleEndian));
   const buffer = view.ViewedArrayBuffer;
   if (IsDetachedBuffer(buffer)) {
@@ -58,5 +58,5 @@ export function SetViewValue(view, requestIndex, isLittleEndian, type, value) {
     return surroundingAgent.Throw('RangeError', msg('DataViewOOB'));
   }
   const bufferIndex = new Value(getIndex + viewOffset);
-  return SetValueInBuffer(buffer, bufferIndex, type, numberValue, false, 'Unordered', isLittleEndian);
+  return yield* SetValueInBuffer(buffer, bufferIndex, type, numberValue, false, 'Unordered', isLittleEndian);
 }

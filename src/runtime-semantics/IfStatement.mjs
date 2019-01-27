@@ -22,7 +22,7 @@ export function* Evaluate_IfStatement({
   alternate: AlternateStatement,
 }) {
   const exprRef = yield* Evaluate(Expression);
-  const exprValue = ToBoolean(Q(GetValue(exprRef)));
+  const exprValue = ToBoolean(Q(yield* GetValue(exprRef)));
 
   if (AlternateStatement !== null) {
     let stmtCompletion;

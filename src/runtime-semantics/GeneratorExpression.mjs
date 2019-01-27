@@ -15,7 +15,7 @@ import { Descriptor, Value } from '../value.mjs';
 //   GeneratorExpression :
 //     `function` `*` `(` FormalParameters `)` `{` GeneratorBody `}`
 //     `function` `*` BindingIdentifier `(` FormalParameters `)` `{` GeneratorBody `}`
-export function Evaluate_GeneratorExpression(GeneratorExpression) {
+export function* Evaluate_GeneratorExpression(GeneratorExpression) {
   const {
     id: BindingIdentifier,
     params: FormalParameters,
@@ -31,21 +31,17 @@ export function Evaluate_GeneratorExpression(GeneratorExpression) {
     name = new Value(BindingIdentifier.name);
     envRec.CreateImmutableBinding(name, Value.false);
   }
-  const closure = X(GeneratorFunctionCreate('Normal', FormalParameters, GeneratorExpression, funcEnv, strict));
+  const closure = X(yield* GeneratorFunctionCreate('Normal', FormalParameters, GeneratorExpression, funcEnv, strict));
   const prototype = ObjectCreate(surroundingAgent.intrinsic('%GeneratorPrototype%'));
-  X(DefinePropertyOrThrow(
-    closure,
-    new Value('prototype'),
-    Descriptor({
-      Value: prototype,
-      Writable: Value.true,
-      Enumerable: Value.false,
-      Configurable: Value.false,
-    }),
-  ));
+  X(yield* DefinePropertyOrThrow(closure, new Value('prototype'), Descriptor({
+    Value: prototype,
+    Writable: Value.true,
+    Enumerable: Value.false,
+    Configurable: Value.false,
+  })));
   closure.SourceText = sourceTextMatchedBy(GeneratorExpression);
   if (BindingIdentifier) {
-    X(SetFunctionName(closure, name));
+    X(yield* SetFunctionName(closure, name));
     envRec.InitializeBinding(name, closure);
   }
   return closure;

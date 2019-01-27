@@ -85,11 +85,11 @@ function LoopContinues(completion, labelSet) {
 // 13.7.4.8 #sec-forbodyevaluation
 function* ForBodyEvaluation(test, increment, stmt, perIterationBindings, labelSet) {
   let V = Value.undefined;
-  Q(CreatePerIterationEnvironment(perIterationBindings));
+  Q(yield* CreatePerIterationEnvironment(perIterationBindings));
   while (true) {
     if (test) {
       const testRef = yield* Evaluate(test);
-      const testValue = Q(GetValue(testRef));
+      const testValue = Q(yield* GetValue(testRef));
       if (ToBoolean(testValue) === Value.false) {
         return new NormalCompletion(V);
       }
@@ -101,16 +101,16 @@ function* ForBodyEvaluation(test, increment, stmt, perIterationBindings, labelSe
     if (result.Value !== undefined) {
       V = result.Value;
     }
-    Q(CreatePerIterationEnvironment(perIterationBindings));
+    Q(yield* CreatePerIterationEnvironment(perIterationBindings));
     if (increment) {
       const incRef = yield* Evaluate(increment);
-      Q(GetValue(incRef));
+      Q(yield* GetValue(incRef));
     }
   }
 }
 
 // 13.7.4.9 #sec-createperiterationenvironment
-function CreatePerIterationEnvironment(perIterationBindings) {
+function* CreatePerIterationEnvironment(perIterationBindings) {
   if (perIterationBindings.length > 0) {
     const lastIterationEnv = surroundingAgent.runningExecutionContext.LexicalEnvironment;
     const lastIterationEnvRec = lastIterationEnv.EnvironmentRecord;
@@ -119,9 +119,9 @@ function CreatePerIterationEnvironment(perIterationBindings) {
     const thisIterationEnv = NewDeclarativeEnvironment(outer);
     const thisIterationEnvRec = thisIterationEnv.EnvironmentRecord;
     for (const bn of perIterationBindings) {
-      X(thisIterationEnvRec.CreateMutableBinding(bn, false));
-      const lastValue = Q(lastIterationEnvRec.GetBindingValue(bn, Value.true));
-      thisIterationEnvRec.InitializeBinding(bn, lastValue);
+      X(yield* thisIterationEnvRec.CreateMutableBinding(bn, false));
+      const lastValue = Q(yield* lastIterationEnvRec.GetBindingValue(bn, Value.true));
+      yield* thisIterationEnvRec.InitializeBinding(bn, lastValue);
     }
     surroundingAgent.runningExecutionContext.LexicalEnvironment = thisIterationEnv;
   }
@@ -129,15 +129,15 @@ function CreatePerIterationEnvironment(perIterationBindings) {
 }
 
 // 13.7.5.10 #sec-runtime-semantics-bindinginstantiation
-function BindingInstantiation_ForDeclaration(ForDeclaration, environment) {
+function* BindingInstantiation_ForDeclaration(ForDeclaration, environment) {
   const envRec = environment.EnvironmentRecord;
   Assert(envRec instanceof DeclarativeEnvironmentRecord);
   const ForBinding = ForDeclaration.declarations[0].id;
   for (const name of BoundNames_ForBinding(ForBinding).map(Value)) {
     if (IsConstantDeclaration(ForDeclaration)) {
-      X(envRec.CreateImmutableBinding(name, Value.true));
+      X(yield* envRec.CreateImmutableBinding(name, Value.true));
     } else {
-      X(envRec.CreateMutableBinding(name, false));
+      X(yield* envRec.CreateMutableBinding(name, false));
     }
   }
 }
@@ -150,23 +150,23 @@ function* ForInOfHeadEvaluation(TDZnames, expr, iterationKind) {
     const TDZ = NewDeclarativeEnvironment(oldEnv);
     const TDZEnvRec = TDZ.EnvironmentRecord;
     for (const name of TDZnames) {
-      X(TDZEnvRec.CreateMutableBinding(name, false));
+      X(yield* TDZEnvRec.CreateMutableBinding(name, false));
     }
     surroundingAgent.runningExecutionContext.LexicalEnvironment = TDZ;
   }
   const exprRef = yield* Evaluate(expr);
   surroundingAgent.runningExecutionContext.LexicalEnvironment = oldEnv;
-  const exprValue = Q(GetValue(exprRef));
+  const exprValue = Q(yield* GetValue(exprRef));
   if (iterationKind === 'enumerate') {
     if (Type(exprValue) === 'Undefined' || Type(exprValue) === 'Null') {
       return new BreakCompletion(undefined);
     }
-    const obj = X(ToObject(exprValue));
-    return Q(EnumerateObjectProperties(obj));
+    const obj = X(yield* ToObject(exprValue));
+    return Q(yield* EnumerateObjectProperties(obj));
   } else {
     Assert(iterationKind === 'iterate' || iterationKind === 'async-iterate');
     const iteratorHint = iterationKind === 'async-iterate' ? 'async' : 'sync';
-    return Q(GetIterator(exprValue, iteratorHint));
+    return Q(yield* GetIterator(exprValue, iteratorHint));
   }
 }
 
@@ -182,19 +182,19 @@ function* ForInOfBodyEvaluation(lhs, stmt, iteratorRecord, iterationKind, lhsKin
     Assert(isAssignmentPattern(assignmentPattern));
   }
   while (true) {
-    let nextResult = Q(Call(iteratorRecord.NextMethod, iteratorRecord.Iterator, []));
+    let nextResult = Q(yield* Call(iteratorRecord.NextMethod, iteratorRecord.Iterator, []));
     if (iteratorKind === 'async') {
       nextResult = Q(yield* Await(nextResult));
     }
     if (Type(nextResult) !== 'Object') {
       return surroundingAgent.Throw('TypeError');
     }
-    const done = Q(IteratorComplete(nextResult));
+    const done = Q(yield* IteratorComplete(nextResult));
     if (done === Value.true) {
       return new NormalCompletion(V);
     }
 
-    const nextValue = Q(IteratorValue(nextResult));
+    const nextValue = Q(yield* IteratorValue(nextResult));
     let iterationEnv;
     let lhsRef;
     if (lhsKind === 'assignment' || lhsKind === 'varBinding') {
@@ -211,7 +211,7 @@ function* ForInOfBodyEvaluation(lhs, stmt, iteratorRecord, iterationKind, lhsKin
         const lhsNames = BoundNames_ForDeclaration(lhs);
         Assert(lhsNames.length === 1);
         const lhsName = new Value(lhsNames[0]);
-        lhsRef = X(ResolveBinding(lhsName, undefined, strict));
+        lhsRef = X(yield* ResolveBinding(lhsName, undefined, strict));
       }
     }
     let status;
@@ -219,9 +219,9 @@ function* ForInOfBodyEvaluation(lhs, stmt, iteratorRecord, iterationKind, lhsKin
       if (lhsRef instanceof AbruptCompletion) {
         status = lhsRef;
       } else if (lhsKind === 'lexicalBinding') {
-        status = InitializeReferencedBinding(lhsRef, nextValue);
+        status = yield* InitializeReferencedBinding(lhsRef, nextValue);
       } else {
-        status = PutValue(lhsRef, nextValue);
+        status = yield* PutValue(lhsRef, nextValue);
       }
     } else {
       if (lhsKind === 'assignment') {
@@ -244,7 +244,7 @@ function* ForInOfBodyEvaluation(lhs, stmt, iteratorRecord, iterationKind, lhsKin
         return status;
       } else {
         Assert(iterationKind === 'iterate');
-        return Q(IteratorClose(iteratorRecord, status));
+        return Q(yield* IteratorClose(iteratorRecord, status));
       }
     }
     const result = EnsureCompletion(yield* Evaluate(stmt));
@@ -258,7 +258,7 @@ function* ForInOfBodyEvaluation(lhs, stmt, iteratorRecord, iterationKind, lhsKin
         if (iteratorKind === 'async') {
           return Q(yield* AsyncIteratorClose(iteratorRecord, status));
         }
-        return Q(IteratorClose(iteratorRecord, status));
+        return Q(yield* IteratorClose(iteratorRecord, status));
       }
     }
     if (result.Value !== undefined) {
@@ -306,7 +306,7 @@ export function* LabelledEvaluation_IterationStatement(IterationStatement, label
           V = stmtResult.Value;
         }
         const exprRef = yield* Evaluate(Expression);
-        const exprValue = Q(GetValue(exprRef));
+        const exprValue = Q(yield* GetValue(exprRef));
         if (ToBoolean(exprValue) === Value.false) {
           return new NormalCompletion(V);
         }
@@ -320,7 +320,7 @@ export function* LabelledEvaluation_IterationStatement(IterationStatement, label
       let V = Value.undefined;
       while (true) {
         const exprRef = yield* Evaluate(Expression);
-        const exprValue = Q(GetValue(exprRef));
+        const exprValue = Q(yield* GetValue(exprRef));
         if (ToBoolean(exprValue) === Value.false) {
           return new NormalCompletion(V);
         }
@@ -337,7 +337,7 @@ export function* LabelledEvaluation_IterationStatement(IterationStatement, label
     case isForStatementWithExpression(IterationStatement):
       if (IterationStatement.init) {
         const exprRef = yield* Evaluate(IterationStatement.init);
-        Q(GetValue(exprRef));
+        Q(yield* GetValue(exprRef));
       }
       return Q(yield* ForBodyEvaluation(IterationStatement.test, IterationStatement.update, IterationStatement.body, [], labelSet));
 
@@ -452,12 +452,12 @@ export function* LabelledEvaluation_IterationStatement(IterationStatement, label
 
 function* InternalEnumerateObjectProperties(O) {
   const visited = new Set();
-  const keys = Q(O.OwnPropertyKeys());
+  const keys = Q(yield* O.OwnPropertyKeys());
   for (const key of keys) {
     if (Type(key) === 'Symbol') {
       continue;
     }
-    const desc = Q(O.GetOwnProperty(key));
+    const desc = Q(yield* O.GetOwnProperty(key));
     if (Type(desc) !== 'Undefined') {
       visited.add(key);
       if (desc.Enumerable === Value.true) {
@@ -465,7 +465,7 @@ function* InternalEnumerateObjectProperties(O) {
       }
     }
   }
-  const proto = Q(O.GetPrototypeOf());
+  const proto = Q(yield* O.GetPrototypeOf());
   if (Type(proto) === 'Null') {
     return;
   }
@@ -477,21 +477,21 @@ function* InternalEnumerateObjectProperties(O) {
 }
 
 // 13.7.5.15 #sec-enumerate-object-properties
-function EnumerateObjectProperties(O) {
+function* EnumerateObjectProperties(O) {
   Assert(Type(O) === 'Object');
   const internalIterator = InternalEnumerateObjectProperties(O);
   const iterator = X(ObjectCreate(Value.null));
-  const nextMethod = CreateBuiltinFunction(() => {
+  const nextMethod = CreateBuiltinFunction(function* EnumerateObjectProperties_Next() {
     const { value, done } = internalIterator.next();
     ReturnIfAbrupt(value);
-    return X(CreateIterResultObject(
+    return X(yield* CreateIterResultObject(
       value === undefined ? Value.undefined : value,
       done ? Value.true : Value.false,
     ));
   }, []);
-  X(CreateDataProperty(iterator, new Value('next'), nextMethod));
-  X(CreateDataProperty(iterator, new Value('throw'), Value.null));
-  X(CreateDataProperty(iterator, new Value('return'), Value.null));
+  X(yield* CreateDataProperty(iterator, new Value('next'), nextMethod));
+  X(yield* CreateDataProperty(iterator, new Value('throw'), Value.null));
+  X(yield* CreateDataProperty(iterator, new Value('return'), Value.null));
   return {
     Iterator: iterator,
     NextMethod: nextMethod,

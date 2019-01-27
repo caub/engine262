@@ -46,7 +46,7 @@ import {
   GlobalEnvironmentRecord,
   NewFunctionEnvironment,
 } from '../environment.mjs';
-import { unwind, OutOfRange } from '../helpers.mjs';
+import { OutOfRange } from '../helpers.mjs';
 
 // This file covers abstract operations defined in
 // 9.2 #sec-ecmascript-function-objects
@@ -72,7 +72,7 @@ function PrepareForOrdinaryCall(F, newTarget) {
 }
 
 // 9.2.1.2 #sec-ordinarycallbindthis
-function OrdinaryCallBindThis(F, calleeContext, thisArgument) {
+function* OrdinaryCallBindThis(F, calleeContext, thisArgument) {
   const thisMode = F.ThisMode;
   if (thisMode === 'lexical') {
     return new NormalCompletion(Value.undefined);
@@ -89,7 +89,7 @@ function OrdinaryCallBindThis(F, calleeContext, thisArgument) {
       Assert(globalEnvRec instanceof GlobalEnvironmentRecord);
       thisValue = globalEnvRec.GlobalThisValue;
     } else {
-      thisValue = X(ToObject(thisArgument));
+      thisValue = X(yield* ToObject(thisArgument));
       // NOTE: ToObject produces wrapper objects using calleeRealm.
     }
   }
@@ -131,7 +131,7 @@ export function* OrdinaryCallEvaluateBody(F, argumentsList) {
 }
 
 // 9.2.1 #sec-ecmascript-function-objects-call-thisargument-argumentslist
-function FunctionCallSlot(thisArgument, argumentsList) {
+function* FunctionCallSlot(thisArgument, argumentsList) {
   const F = this;
 
   Assert(F instanceof FunctionValue);
@@ -141,8 +141,8 @@ function FunctionCallSlot(thisArgument, argumentsList) {
   // const callerContext = surroundingAgent.runningExecutionContext;
   const calleeContext = PrepareForOrdinaryCall(F, Value.undefined);
   Assert(surroundingAgent.runningExecutionContext === calleeContext);
-  OrdinaryCallBindThis(F, calleeContext, thisArgument);
-  const result = EnsureCompletion(unwind(OrdinaryCallEvaluateBody(F, argumentsList)));
+  yield* OrdinaryCallBindThis(F, calleeContext, thisArgument);
+  const result = EnsureCompletion(yield* OrdinaryCallEvaluateBody(F, argumentsList));
   // Remove calleeContext from the execution context stack and
   // restore callerContext as the running execution context.
   surroundingAgent.executionContextStack.pop(calleeContext);
@@ -154,7 +154,7 @@ function FunctionCallSlot(thisArgument, argumentsList) {
 }
 
 // 9.2.2 #sec-ecmascript-function-objects-construct-argumentslist-newtarget
-function FunctionConstructSlot(argumentsList, newTarget) {
+function* FunctionConstructSlot(argumentsList, newTarget) {
   const F = this;
 
   Assert(F instanceof FunctionValue);
@@ -163,16 +163,16 @@ function FunctionConstructSlot(argumentsList, newTarget) {
   const kind = F.ConstructorKind;
   let thisArgument;
   if (kind === 'base') {
-    thisArgument = Q(OrdinaryCreateFromConstructor(newTarget, '%ObjectPrototype%'));
+    thisArgument = Q(yield* OrdinaryCreateFromConstructor(newTarget, '%ObjectPrototype%'));
   }
   const calleeContext = PrepareForOrdinaryCall(F, newTarget);
   Assert(surroundingAgent.runningExecutionContext === calleeContext);
   if (kind === 'base') {
-    OrdinaryCallBindThis(F, calleeContext, thisArgument);
+    yield* OrdinaryCallBindThis(F, calleeContext, thisArgument);
   }
   const constructorEnv = calleeContext.LexicalEnvironment;
   const envRec = constructorEnv.EnvironmentRecord;
-  const result = EnsureCompletion(unwind(OrdinaryCallEvaluateBody(F, argumentsList)));
+  const result = EnsureCompletion(yield* OrdinaryCallEvaluateBody(F, argumentsList));
   // Remove calleeContext from the execution context stack and
   // restore callerContext as the running execution context.
   surroundingAgent.executionContextStack.pop(calleeContext);
@@ -233,7 +233,7 @@ export function FunctionAllocate(functionPrototype, strict, functionKind) {
 }
 
 // 9.2.4 #sec-functioninitialize
-export function FunctionInitialize(F, kind, ParameterList, Body, Scope) {
+export function* FunctionInitialize(F, kind, ParameterList, Body, Scope) {
   let len;
   switch (kind) {
     case 'Normal':
@@ -248,7 +248,7 @@ export function FunctionInitialize(F, kind, ParameterList, Body, Scope) {
     default:
       throw new OutOfRange('FunctionInitialize kind', kind);
   }
-  X(SetFunctionLength(F, new Value(len)));
+  X(yield* SetFunctionLength(F, new Value(len)));
   const Strict = F.Strict;
   F.Environment = Scope;
   F.FormalParameters = ParameterList;
@@ -268,54 +268,54 @@ export function FunctionInitialize(F, kind, ParameterList, Body, Scope) {
 // Instead of taking in a {Async}Function/Concise/GeneratorBody for Body, we
 // instead take in the entire function node as Body and save it in
 // ECMAScriptCode as such.
-export function FunctionCreate(kind, ParameterList, Body, Scope, Strict, prototype) {
+export function* FunctionCreate(kind, ParameterList, Body, Scope, Strict, prototype) {
   if (prototype === undefined) {
     prototype = surroundingAgent.intrinsic('%FunctionPrototype%');
   }
   const allocKind = kind === 'Normal' ? 'normal' : 'non-constructor';
   const F = FunctionAllocate(prototype, Strict, allocKind);
-  return FunctionInitialize(F, kind, ParameterList, Body, Scope);
+  return yield* FunctionInitialize(F, kind, ParameterList, Body, Scope);
 }
 
 // 9.2.6 #sec-generatorfunctioncreate
-export function GeneratorFunctionCreate(kind, ParameterList, Body, Scope, Strict) {
+export function* GeneratorFunctionCreate(kind, ParameterList, Body, Scope, Strict) {
   const functionPrototype = surroundingAgent.intrinsic('%Generator%');
   const F = FunctionAllocate(functionPrototype, Strict, 'generator');
-  return FunctionInitialize(F, kind, ParameterList, Body, Scope);
+  return yield* FunctionInitialize(F, kind, ParameterList, Body, Scope);
 }
 
 // 9.2.7 #sec-asyncgeneratorfunctioncreate
-export function AsyncGeneratorFunctionCreate(kind, ParameterList, Body, Scope, Strict) {
+export function* AsyncGeneratorFunctionCreate(kind, ParameterList, Body, Scope, Strict) {
   const functionPrototype = surroundingAgent.intrinsic('%AsyncGenerator%');
   const F = X(FunctionAllocate(functionPrototype, Strict, 'generator'));
-  return X(FunctionInitialize(F, kind, ParameterList, Body, Scope));
+  return X(yield* FunctionInitialize(F, kind, ParameterList, Body, Scope));
 }
 
 // 9.2.8 #sec-async-functions-abstract-operations-async-function-create
-export function AsyncFunctionCreate(kind, parameters, body, Scope, Strict) {
+export function* AsyncFunctionCreate(kind, parameters, body, Scope, Strict) {
   const functionPrototype = surroundingAgent.intrinsic('%AsyncFunctionPrototype%');
   const F = X(FunctionAllocate(functionPrototype, Strict, 'async'));
-  return X(FunctionInitialize(F, kind, parameters, body, Scope));
+  return X(yield* FunctionInitialize(F, kind, parameters, body, Scope));
 }
 
 // 9.2.10 #sec-makeconstructor
-export function MakeConstructor(F, writablePrototype, prototype) {
+export function* MakeConstructor(F, writablePrototype, prototype) {
   Assert(F instanceof FunctionValue);
   Assert(IsConstructor(F) === Value.true);
-  Assert(X(IsExtensible(F)) === Value.true && X(HasOwnProperty(F, new Value('prototype'))) === Value.false);
+  Assert(X(yield* IsExtensible(F)) === Value.true && X(yield* HasOwnProperty(F, new Value('prototype'))) === Value.false);
   if (writablePrototype === undefined) {
     writablePrototype = true;
   }
   if (prototype === undefined) {
     prototype = ObjectCreate(surroundingAgent.intrinsic('%ObjectPrototype%'));
-    X(DefinePropertyOrThrow(prototype, new Value('constructor'), Descriptor({
+    X(yield* DefinePropertyOrThrow(prototype, new Value('constructor'), Descriptor({
       Value: F,
       Writable: writablePrototype ? Value.true : Value.false,
       Enumerable: Value.false,
       Configurable: Value.true,
     })));
   }
-  X(DefinePropertyOrThrow(F, new Value('prototype'), Descriptor({
+  X(yield* DefinePropertyOrThrow(F, new Value('prototype'), Descriptor({
     Value: prototype,
     Writable: writablePrototype ? Value.true : Value.false,
     Enumerable: Value.false,
@@ -341,8 +341,8 @@ export function MakeMethod(F, homeObject) {
 }
 
 // 9.2.13 #sec-setfunctionname
-export function SetFunctionName(F, name, prefix) {
-  Assert(IsExtensible(F) === Value.true && HasOwnProperty(F, new Value('name')) === Value.false);
+export function* SetFunctionName(F, name, prefix) {
+  Assert((yield* IsExtensible(F)) === Value.true && (yield* HasOwnProperty(F, new Value('name'))) === Value.false);
   Assert(Type(name) === 'Symbol' || Type(name) === 'String');
   Assert(!prefix || Type(prefix) === 'String');
   if (Type(name) === 'Symbol') {
@@ -356,7 +356,7 @@ export function SetFunctionName(F, name, prefix) {
   if (prefix !== undefined) {
     name = new Value(`${prefix.stringValue()} ${name.stringValue()}`);
   }
-  return X(DefinePropertyOrThrow(F, new Value('name'), Descriptor({
+  return X(yield* DefinePropertyOrThrow(F, new Value('name'), Descriptor({
     Value: name,
     Writable: Value.false,
     Enumerable: Value.false,
@@ -365,11 +365,11 @@ export function SetFunctionName(F, name, prefix) {
 }
 
 // 9.2.14 #sec-setfunctionlength
-export function SetFunctionLength(F, length) {
-  Assert(IsExtensible(F) === Value.true && HasOwnProperty(F, new Value('length')) === Value.false);
+export function* SetFunctionLength(F, length) {
+  Assert((yield* IsExtensible(F)) === Value.true && (yield* HasOwnProperty(F, new Value('length'))) === Value.false);
   Assert(Type(length) === 'Number');
-  Assert(length.numberValue() >= 0 && X(ToInteger(length)).numberValue() === length.numberValue());
-  return X(DefinePropertyOrThrow(F, new Value('length'), Descriptor({
+  Assert(length.numberValue() >= 0 && X(yield* ToInteger(length)).numberValue() === length.numberValue());
+  return X(yield* DefinePropertyOrThrow(F, new Value('length'), Descriptor({
     Value: length,
     Writable: Value.false,
     Enumerable: Value.false,

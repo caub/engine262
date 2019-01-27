@@ -22,7 +22,7 @@ function thisBooleanValue(value) {
   return surroundingAgent.Throw('TypeError');
 }
 
-function BooleanProto_toString(argList, { thisValue }) {
+function* BooleanProto_toString(argList, { thisValue }) {
   const b = Q(thisBooleanValue(thisValue));
   if (b === Value.true) {
     return new Value('true');
@@ -30,7 +30,7 @@ function BooleanProto_toString(argList, { thisValue }) {
   return new Value('false');
 }
 
-function BooleanProto_valueOf(argList, { thisValue }) {
+function* BooleanProto_valueOf(argList, { thisValue }) {
   return Q(thisBooleanValue(thisValue));
 }
 

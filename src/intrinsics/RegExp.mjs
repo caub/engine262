@@ -17,13 +17,13 @@ import { BootstrapConstructor } from './Bootstrap.mjs';
 import { Q } from '../completion.mjs';
 
 // 21.2.3 #sec-regexp-constructor
-function RegExpConstructor([pattern = Value.undefined, flags = Value.undefined], { NewTarget }) {
-  const patternIsRegExp = Q(IsRegExp(pattern));
+function* RegExpConstructor([pattern = Value.undefined, flags = Value.undefined], { NewTarget }) {
+  const patternIsRegExp = Q(yield* IsRegExp(pattern));
   let newTarget;
   if (NewTarget === Value.undefined) {
     newTarget = surroundingAgent.activeFunctionObject;
     if (patternIsRegExp === Value.true && flags === Value.undefined) {
-      const patternConstructor = Q(Get(pattern, new Value('constructor')));
+      const patternConstructor = Q(yield* Get(pattern, new Value('constructor')));
       if (SameValue(newTarget, patternConstructor) === Value.true) {
         return pattern;
       }
@@ -41,9 +41,9 @@ function RegExpConstructor([pattern = Value.undefined, flags = Value.undefined],
       F = flags;
     }
   } else if (patternIsRegExp === Value.true) {
-    P = Q(Get(pattern, new Value('source')));
+    P = Q(yield* Get(pattern, new Value('source')));
     if (flags === Value.undefined) {
-      F = Q(Get(pattern, new Value('flags')));
+      F = Q(yield* Get(pattern, new Value('flags')));
     } else {
       F = flags;
     }
@@ -51,8 +51,8 @@ function RegExpConstructor([pattern = Value.undefined, flags = Value.undefined],
     P = pattern;
     F = flags;
   }
-  const O = Q(RegExpAlloc(newTarget));
-  return Q(RegExpInitialize(O, P, F));
+  const O = Q(yield* RegExpAlloc(newTarget));
+  return Q(yield* RegExpInitialize(O, P, F));
 }
 
 // 22.2.4.2 #sec-get-regexp-@@species

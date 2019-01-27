@@ -45,9 +45,7 @@ import { OutOfRange } from '../helpers.mjs';
 //
 // (implicit)
 //   PropertyDefinitionList : PropertyDefinition
-export function* PropertyDefinitionEvaluation_PropertyDefinitionList(
-  PropertyDefinitionList, object, enumerable,
-) {
+export function* PropertyDefinitionEvaluation_PropertyDefinitionList(PropertyDefinitionList, object, enumerable) {
   Assert(PropertyDefinitionList.length > 0);
 
   let lastReturn;
@@ -65,42 +63,38 @@ function* PropertyDefinitionEvaluation_PropertyDefinition_Spread(PropertyDefinit
   const AssignmentExpression = PropertyDefinition.argument;
 
   const exprValue = yield* Evaluate(AssignmentExpression);
-  const fromValue = Q(GetValue(exprValue));
+  const fromValue = Q(yield* GetValue(exprValue));
   const excludedNames = [];
-  return Q(CopyDataProperties(object, fromValue, excludedNames));
+  return Q(yield* CopyDataProperties(object, fromValue, excludedNames));
 }
 
 // 12.2.6.8 #sec-object-initializer-runtime-semantics-propertydefinitionevaluation
 //   PropertyDefinition : IdentifierReference
-function* PropertyDefinitionEvaluation_PropertyDefinition_IdentifierReference(
-  PropertyDefinition, object, enumerable,
-) {
+function* PropertyDefinitionEvaluation_PropertyDefinition_IdentifierReference(PropertyDefinition, object, enumerable) {
   const IdentifierReference = PropertyDefinition.key;
   const propName = new Value(IdentifierReference.name);
   const exprValue = yield* Evaluate(IdentifierReference);
-  const propValue = Q(GetValue(exprValue));
+  const propValue = Q(yield* GetValue(exprValue));
   Assert(enumerable);
-  return CreateDataPropertyOrThrow(object, propName, propValue);
+  return yield* CreateDataPropertyOrThrow(object, propName, propValue);
 }
 
 // 12.2.6.8 #sec-object-initializer-runtime-semantics-propertydefinitionevaluation
 //   PropertyDefinition : PropertyName `:` AssignmentExpression
-function* PropertyDefinitionEvaluation_PropertyDefinition_KeyValue(
-  PropertyDefinition, object, enumerable,
-) {
+function* PropertyDefinitionEvaluation_PropertyDefinition_KeyValue(PropertyDefinition, object, enumerable) {
   const { key: PropertyName, value: AssignmentExpression } = PropertyDefinition;
   const propKey = yield* Evaluate_PropertyName(PropertyName, PropertyDefinition.computed);
   ReturnIfAbrupt(propKey);
   const exprValueRef = yield* Evaluate(AssignmentExpression);
-  const propValue = Q(GetValue(exprValueRef));
+  const propValue = Q(yield* GetValue(exprValueRef));
   if (IsAnonymousFunctionDefinition(AssignmentExpression)) {
-    const hasNameProperty = Q(HasOwnProperty(propValue, new Value('name')));
+    const hasNameProperty = Q(yield* HasOwnProperty(propValue, new Value('name')));
     if (hasNameProperty === Value.false) {
-      X(SetFunctionName(propValue, propKey));
+      X(yield* SetFunctionName(propValue, propKey));
     }
   }
   Assert(enumerable);
-  return CreateDataPropertyOrThrow(object, propKey, propValue);
+  return yield* CreateDataPropertyOrThrow(object, propKey, propValue);
 }
 
 // 14.3.8 #sec-method-definitions-runtime-semantics-propertydefinitionevaluation
@@ -116,14 +110,14 @@ export function* PropertyDefinitionEvaluation_MethodDefinition(MethodDefinition,
     case isMethodDefinitionRegularFunction(MethodDefinition): {
       const methodDef = yield* DefineMethod(MethodDefinition, object);
       ReturnIfAbrupt(methodDef);
-      X(SetFunctionName(methodDef.Closure, methodDef.Key));
+      X(yield* SetFunctionName(methodDef.Closure, methodDef.Key));
       const desc = Descriptor({
         Value: methodDef.Closure,
         Writable: Value.true,
         Enumerable: enumerable ? Value.true : Value.false,
         Configurable: Value.true,
       });
-      return Q(DefinePropertyOrThrow(object, methodDef.Key, desc));
+      return Q(yield* DefinePropertyOrThrow(object, methodDef.Key, desc));
     }
 
     case isGeneratorMethod(MethodDefinition):
@@ -144,16 +138,16 @@ export function* PropertyDefinitionEvaluation_MethodDefinition(MethodDefinition,
       const strict = isStrictModeCode(MethodDefinition);
       const scope = surroundingAgent.runningExecutionContext.LexicalEnvironment;
       const formalParameterList = [];
-      const closure = FunctionCreate('Method', formalParameterList, MethodDefinition.value, scope, strict);
+      const closure = yield* FunctionCreate('Method', formalParameterList, MethodDefinition.value, scope, strict);
       X(MakeMethod(closure, object));
-      X(SetFunctionName(closure, propKey, new Value('get')));
+      X(yield* SetFunctionName(closure, propKey, new Value('get')));
       closure.SourceText = sourceTextMatchedBy(MethodDefinition);
       const desc = Descriptor({
         Get: closure,
         Enumerable: enumerable ? Value.true : Value.false,
         Configurable: Value.true,
       });
-      return Q(DefinePropertyOrThrow(object, propKey, desc));
+      return Q(yield* DefinePropertyOrThrow(object, propKey, desc));
     }
 
     case isMethodDefinitionSetter(MethodDefinition): {
@@ -165,16 +159,16 @@ export function* PropertyDefinitionEvaluation_MethodDefinition(MethodDefinition,
       // If the function code for this MethodDefinition is strict mode code, let strict be true. Otherwise let strict be false.
       const strict = isStrictModeCode(MethodDefinition);
       const scope = surroundingAgent.runningExecutionContext.LexicalEnvironment;
-      const closure = FunctionCreate('Method', PropertySetParameterList, MethodDefinition.value, scope, strict);
+      const closure = yield* FunctionCreate('Method', PropertySetParameterList, MethodDefinition.value, scope, strict);
       X(MakeMethod(closure, object));
-      X(SetFunctionName(closure, propKey, new Value('set')));
+      X(yield* SetFunctionName(closure, propKey, new Value('set')));
       closure.SourceText = sourceTextMatchedBy(MethodDefinition);
       const desc = Descriptor({
         Set: closure,
         Enumerable: enumerable ? Value.true : Value.false,
         Configurable: Value.true,
       });
-      return Q(DefinePropertyOrThrow(object, propKey, desc));
+      return Q(yield* DefinePropertyOrThrow(object, propKey, desc));
     }
     default:
       throw new OutOfRange('PropertyDefinitionEvaluation_MethodDefinition', MethodDefinition);
@@ -200,20 +194,16 @@ function* PropertyDefinitionEvaluation_GeneratorMethod(GeneratorMethod, object, 
   const propKey = yield* Evaluate_PropertyName(PropertyName, GeneratorMethod.computed);
   ReturnIfAbrupt(propKey);
   const scope = surroundingAgent.runningExecutionContext.LexicalEnvironment;
-  const closure = X(GeneratorFunctionCreate('Method', UniqueFormalParameters, GeneratorExpression, scope, strict));
+  const closure = X(yield* GeneratorFunctionCreate('Method', UniqueFormalParameters, GeneratorExpression, scope, strict));
   MakeMethod(closure, object);
   const prototype = ObjectCreate(surroundingAgent.intrinsic('%GeneratorPrototype%'));
-  X(DefinePropertyOrThrow(
-    closure,
-    new Value('prototype'),
-    Descriptor({
-      Value: prototype,
-      Writable: Value.true,
-      Enumerable: Value.false,
-      Configurable: Value.false,
-    }),
-  ));
-  X(SetFunctionName(closure, propKey));
+  X(yield* DefinePropertyOrThrow(closure, new Value('prototype'), Descriptor({
+    Value: prototype,
+    Writable: Value.true,
+    Enumerable: Value.false,
+    Configurable: Value.false,
+  })));
+  X(yield* SetFunctionName(closure, propKey));
   closure.SourceText = sourceTextMatchedBy(GeneratorExpression);
   const desc = Descriptor({
     Value: closure,
@@ -221,7 +211,7 @@ function* PropertyDefinitionEvaluation_GeneratorMethod(GeneratorMethod, object, 
     Enumerable: enumerable ? Value.true : Value.false,
     Configurable: Value.true,
   });
-  return Q(DefinePropertyOrThrow(object, propKey, desc));
+  return Q(yield* DefinePropertyOrThrow(object, propKey, desc));
 }
 
 // AsyncMethod : `async` PropertyName `(` UniqueFormalParameters `)` `{` AsyncFunctionBody `}`
@@ -236,16 +226,16 @@ function* PropertyDefinitionEvaluation_AsyncMethod(AsyncMethod, object, enumerab
   ReturnIfAbrupt(propKey);
   const strict = isStrictModeCode(AsyncExpression);
   const scope = surroundingAgent.runningExecutionContext.LexicalEnvironment;
-  const closure = X(AsyncFunctionCreate('Method', UniqueFormalParameters, AsyncExpression, scope, strict));
+  const closure = X(yield* AsyncFunctionCreate('Method', UniqueFormalParameters, AsyncExpression, scope, strict));
   X(MakeMethod(closure, object));
-  X(SetFunctionName(closure, propKey));
+  X(yield* SetFunctionName(closure, propKey));
   const desc = Descriptor({
     Value: closure,
     Writable: Value.true,
     Enumerable: enumerable ? Value.true : Value.false,
     Configurable: Value.true,
   });
-  return Q(DefinePropertyOrThrow(object, propKey, desc));
+  return Q(yield* DefinePropertyOrThrow(object, propKey, desc));
 }
 
 // AsyncGeneratorMethod : `async` `*` PropertyName `(` UniqueFormalParameters `)` `{` AsyncGeneratorFunctionBody `}`
@@ -260,23 +250,23 @@ function* PropertyDefinitionEvaluation_AsyncGeneratorMethod(AsyncGeneratorMethod
   ReturnIfAbrupt(propKey);
   const strict = isStrictModeCode(AsyncGeneratorExpression);
   const scope = surroundingAgent.runningExecutionContext.LexicalEnvironment;
-  const closure = X(AsyncGeneratorFunctionCreate('Method', UniqueFormalParameters, AsyncGeneratorExpression, scope, strict));
+  const closure = X(yield* AsyncGeneratorFunctionCreate('Method', UniqueFormalParameters, AsyncGeneratorExpression, scope, strict));
   X(MakeMethod(closure, object));
   const prototype = X(ObjectCreate(surroundingAgent.intrinsic('%AsyncGeneratorPrototype%')));
-  X(DefinePropertyOrThrow(closure, new Value('prototype'), Descriptor({
+  X(yield* DefinePropertyOrThrow(closure, new Value('prototype'), Descriptor({
     Value: prototype,
     Writable: Value.true,
     Enumerable: Value.false,
     Configurable: Value.false,
   })));
-  X(SetFunctionName(closure, propKey));
+  X(yield* SetFunctionName(closure, propKey));
   const desc = Descriptor({
     Value: closure,
     Writable: Value.true,
     Enumerable: enumerable ? Value.true : Value.false,
     Configurable: Value.true,
   });
-  return Q(DefinePropertyOrThrow(object, propKey, desc));
+  return Q(yield* DefinePropertyOrThrow(object, propKey, desc));
 }
 
 // (implicit)

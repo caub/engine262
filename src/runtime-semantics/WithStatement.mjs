@@ -17,8 +17,8 @@ export function* Evaluate_WithStatement({
   body: Statement,
 }) {
   const val = yield* Evaluate(Expression);
-  const actualVal = Q(GetValue(val));
-  const obj = Q(ToObject(actualVal));
+  const actualVal = Q(yield* GetValue(val));
+  const obj = Q(yield* ToObject(actualVal));
   const oldEnv = surroundingAgent.runningExecutionContext.LexicalEnvironment;
   const newEnv = NewObjectEnvironment(obj, oldEnv);
   newEnv.EnvironmentRecord.withEnvironment = true;

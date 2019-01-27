@@ -10,7 +10,7 @@ import { resume } from '../helpers.mjs';
 // 25.7 #sec-async-function-objects
 
 // 25.7.5.1 #sec-async-functions-abstract-operations-async-function-start
-export function AsyncFunctionStart(promiseCapability, asyncFunctionBody, isExpression) {
+export function* AsyncFunctionStart(promiseCapability, asyncFunctionBody, isExpression) {
   const runningContext = surroundingAgent.runningExecutionContext;
   const asyncContext = runningContext.copy();
   asyncContext.codeEvaluationState = (function* resumer() {
@@ -20,13 +20,13 @@ export function AsyncFunctionStart(promiseCapability, asyncFunctionBody, isExpre
     surroundingAgent.executionContextStack.pop(asyncContext);
     // https://github.com/tc39/ecma262/pull/1406
     if (result.Type === 'throw') {
-      X(Call(promiseCapability.Reject, Value.undefined, [result.Value]));
+      X(yield* Call(promiseCapability.Reject, Value.undefined, [result.Value]));
     } else if (result.Type === 'normal' && isExpression === false) {
-      X(Call(promiseCapability.Resolve, Value.undefined, [Value.undefined]));
+      X(yield* Call(promiseCapability.Resolve, Value.undefined, [Value.undefined]));
     } else {
       Assert(result.Type === (isExpression ? 'normal' : 'return'));
       Assert(result.Value !== undefined);
-      X(Call(promiseCapability.Resolve, Value.undefined, [result.Value]));
+      X(yield* Call(promiseCapability.Resolve, Value.undefined, [result.Value]));
     }
     return Value.undefined;
   }());

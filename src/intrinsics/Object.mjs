@@ -28,31 +28,31 @@ import { Q, X } from '../completion.mjs';
 import { BootstrapConstructor } from './Bootstrap.mjs';
 import { msg } from '../helpers.mjs';
 
-function ObjectConstructor([value], { NewTarget }) {
+function* ObjectConstructor([value], { NewTarget }) {
   if (NewTarget !== Value.undefined && NewTarget !== surroundingAgent.activeFunctionObject) {
-    return OrdinaryCreateFromConstructor(NewTarget, '%ObjectPrototype%');
+    return yield* OrdinaryCreateFromConstructor(NewTarget, '%ObjectPrototype%');
   }
   if (value === Value.null || value === Value.undefined || value === undefined) {
     return ObjectCreate(surroundingAgent.currentRealmRecord.Intrinsics['%ObjectPrototype%']);
   }
-  return X(ToObject(value));
+  return X(yield* ToObject(value));
 }
 
-function Object_assign([target = Value.undefined, ...sources]) {
-  const to = Q(ToObject(target));
+function* Object_assign([target = Value.undefined, ...sources]) {
+  const to = Q(yield* ToObject(target));
   if (sources.length === 0) {
     return to;
   }
   // Let sources be the List of argument values starting with the second argument.
   for (const nextSource of sources) {
     if (Type(nextSource) !== 'Undefined' && Type(nextSource) !== 'Null') {
-      const from = X(ToObject(nextSource));
-      const keys = Q(from.OwnPropertyKeys());
+      const from = X(yield* ToObject(nextSource));
+      const keys = Q(yield* from.OwnPropertyKeys());
       for (const nextKey of keys) {
-        const desc = Q(from.GetOwnProperty(nextKey));
+        const desc = Q(yield* from.GetOwnProperty(nextKey));
         if (Type(desc) !== 'Undefined' && desc.Enumerable === Value.true) {
-          const propValue = Q(Get(from, nextKey));
-          Q(Set(to, nextKey, propValue, Value.true));
+          const propValue = Q(yield* Get(from, nextKey));
+          Q(yield* Set(to, nextKey, propValue, Value.true));
         }
       }
     }
@@ -60,179 +60,179 @@ function Object_assign([target = Value.undefined, ...sources]) {
   return to;
 }
 
-function Object_create([O = Value.undefined, Properties = Value.undefined]) {
+function* Object_create([O = Value.undefined, Properties = Value.undefined]) {
   if (Type(O) !== 'Object' && Type(O) !== 'Null') {
     return surroundingAgent.Throw('TypeError', 'Object prototype may only be an Object or null');
   }
   const obj = ObjectCreate(O);
   if (Properties !== Value.undefined) {
-    return Q(ObjectDefineProperties(obj, Properties));
+    return Q(yield* ObjectDefineProperties(obj, Properties));
   }
   return obj;
 }
 
-function Object_defineProperties([O = Value.undefined, Properties = Value.undefined]) {
-  return Q(ObjectDefineProperties(O, Properties));
+function* Object_defineProperties([O = Value.undefined, Properties = Value.undefined]) {
+  return Q(yield* ObjectDefineProperties(O, Properties));
 }
 
 // #sec-objectdefineproperties ObjectDefineProperties
-function ObjectDefineProperties(O, Properties) {
+function* ObjectDefineProperties(O, Properties) {
   if (Type(O) !== 'Object') {
     return surroundingAgent.Throw('TypeError', msg('NotAnObject', O));
   }
-  const props = Q(ToObject(Properties));
-  const keys = Q(props.OwnPropertyKeys());
+  const props = Q(yield* ToObject(Properties));
+  const keys = Q(yield* props.OwnPropertyKeys());
   const descriptors = [];
   for (const nextKey of keys) {
-    const propDesc = Q(props.GetOwnProperty(nextKey));
+    const propDesc = Q(yield* props.GetOwnProperty(nextKey));
     if (propDesc !== Value.undefined && propDesc.Enumerable === Value.true) {
-      const descObj = Q(Get(props, nextKey));
-      const desc = Q(ToPropertyDescriptor(descObj));
+      const descObj = Q(yield* Get(props, nextKey));
+      const desc = Q(yield* ToPropertyDescriptor(descObj));
       descriptors.push([nextKey, desc]);
     }
   }
   for (const pair of descriptors) {
     const P = pair[0];
     const desc = pair[1];
-    Q(DefinePropertyOrThrow(O, P, desc));
+    Q(yield* DefinePropertyOrThrow(O, P, desc));
   }
   return O;
 }
 
-function Object_defineProperty([O = Value.undefined, P = Value.undefined, Attributes = Value.undefined]) {
+function* Object_defineProperty([O = Value.undefined, P = Value.undefined, Attributes = Value.undefined]) {
   if (Type(O) !== 'Object') {
     return surroundingAgent.Throw('TypeError', 'Value is not an object');
   }
-  const key = Q(ToPropertyKey(P));
-  const desc = Q(ToPropertyDescriptor(Attributes));
+  const key = Q(yield* ToPropertyKey(P));
+  const desc = Q(yield* ToPropertyDescriptor(Attributes));
 
-  Q(DefinePropertyOrThrow(O, key, desc));
+  Q(yield* DefinePropertyOrThrow(O, key, desc));
   return O;
 }
 
-function Object_entries([O = Value.undefined]) {
-  const obj = Q(ToObject(O));
-  const nameList = Q(EnumerableOwnPropertyNames(obj, 'key+value'));
-  return CreateArrayFromList(nameList);
+function* Object_entries([O = Value.undefined]) {
+  const obj = Q(yield* ToObject(O));
+  const nameList = Q(yield* EnumerableOwnPropertyNames(obj, 'key+value'));
+  return yield* CreateArrayFromList(nameList);
 }
 
-function Object_freeze([O = Value.undefined]) {
+function* Object_freeze([O = Value.undefined]) {
   if (Type(O) !== 'Object') {
     return O;
   }
 
-  const status = Q(SetIntegrityLevel(O, 'frozen'));
+  const status = Q(yield* SetIntegrityLevel(O, 'frozen'));
   if (status === Value.false) {
     return surroundingAgent.Throw('TypeError', 'Could not freeze object');
   }
   return O;
 }
 
-function Object_getOwnPropertyDescriptor([O = Value.undefined, P = Value.undefined]) {
-  const obj = Q(ToObject(O));
-  const key = Q(ToPropertyKey(P));
-  const desc = Q(obj.GetOwnProperty(key));
-  return FromPropertyDescriptor(desc);
+function* Object_getOwnPropertyDescriptor([O = Value.undefined, P = Value.undefined]) {
+  const obj = Q(yield* ToObject(O));
+  const key = Q(yield* ToPropertyKey(P));
+  const desc = Q(yield* obj.GetOwnProperty(key));
+  return yield* FromPropertyDescriptor(desc);
 }
 
-function Object_getOwnPropertyDescriptors([O = Value.undefined]) {
-  const obj = Q(ToObject(O));
-  const ownKeys = Q(obj.OwnPropertyKeys());
+function* Object_getOwnPropertyDescriptors([O = Value.undefined]) {
+  const obj = Q(yield* ToObject(O));
+  const ownKeys = Q(yield* obj.OwnPropertyKeys());
   const descriptors = X(ObjectCreate(surroundingAgent.intrinsic('%ObjectPrototype%')));
   for (const key of ownKeys) {
-    const desc = Q(obj.GetOwnProperty(key));
-    const descriptor = X(FromPropertyDescriptor(desc));
+    const desc = Q(yield* obj.GetOwnProperty(key));
+    const descriptor = X(yield* FromPropertyDescriptor(desc));
     if (descriptor !== Value.undefined) {
-      X(CreateDataProperty(descriptors, key, descriptor));
+      X(yield* CreateDataProperty(descriptors, key, descriptor));
     }
   }
   return descriptors;
 }
 
-function GetOwnPropertyKeys(O, type) {
-  const obj = Q(ToObject(O));
-  const keys = Q(obj.OwnPropertyKeys());
+function* GetOwnPropertyKeys(O, type) {
+  const obj = Q(yield* ToObject(O));
+  const keys = Q(yield* obj.OwnPropertyKeys());
   const nameList = [];
   keys.forEach((nextKey) => {
     if (Type(nextKey) === type) {
       nameList.push(nextKey);
     }
   });
-  return CreateArrayFromList(nameList);
+  return yield* CreateArrayFromList(nameList);
 }
 
-function Object_getOwnPropertyNames([O = Value.undefined]) {
-  return Q(GetOwnPropertyKeys(O, 'String'));
+function* Object_getOwnPropertyNames([O = Value.undefined]) {
+  return Q(yield* GetOwnPropertyKeys(O, 'String'));
 }
 
-function Object_getOwnPropertySymbols([O = Value.undefined]) {
-  return Q(GetOwnPropertyKeys(O, 'Symbol'));
+function* Object_getOwnPropertySymbols([O = Value.undefined]) {
+  return Q(yield* GetOwnPropertyKeys(O, 'Symbol'));
 }
 
-function Object_getPrototypeOf([O = Value.undefined]) {
-  const obj = Q(ToObject(O));
-  return Q(obj.GetPrototypeOf());
+function* Object_getPrototypeOf([O = Value.undefined]) {
+  const obj = Q(yield* ToObject(O));
+  return Q(yield* obj.GetPrototypeOf());
 }
 
-function Object_is([value1 = Value.undefined, value2 = Value.undefined]) {
+function* Object_is([value1 = Value.undefined, value2 = Value.undefined]) {
   return SameValue(value1, value2);
 }
 
-function Object_isExtensible([O = Value.undefined]) {
+function* Object_isExtensible([O = Value.undefined]) {
   if (Type(O) !== 'Object') {
     return Value.false;
   }
 
-  return IsExtensible(O);
+  return Q(yield* IsExtensible(O));
 }
 
-function Object_isFrozen([O = Value.undefined]) {
+function* Object_isFrozen([O = Value.undefined]) {
   if (Type(O) !== 'Object') {
     return Value.true;
   }
 
-  return Q(TestIntegrityLevel(O, 'frozen'));
+  return Q(yield* TestIntegrityLevel(O, 'frozen'));
 }
 
-function Object_isSealed([O = Value.undefined]) {
+function* Object_isSealed([O = Value.undefined]) {
   if (Type(O) !== 'Object') {
     return Value.true;
   }
 
-  return Q(TestIntegrityLevel(O, 'sealed'));
+  return Q(yield* TestIntegrityLevel(O, 'sealed'));
 }
 
-function Object_keys([O = Value.undefined]) {
-  const obj = Q(ToObject(O));
-  const nameList = Q(EnumerableOwnPropertyNames(obj, 'key'));
-  return CreateArrayFromList(nameList);
+function* Object_keys([O = Value.undefined]) {
+  const obj = Q(yield* ToObject(O));
+  const nameList = Q(yield* EnumerableOwnPropertyNames(obj, 'key'));
+  return yield* CreateArrayFromList(nameList);
 }
 
-function Object_preventExtensions([O = Value.undefined]) {
+function* Object_preventExtensions([O = Value.undefined]) {
   if (Type(O) !== 'Object') {
     return O;
   }
 
-  const status = Q(O.PreventExtensions());
+  const status = Q(yield* O.PreventExtensions());
   if (status === Value.false) {
     return surroundingAgent.Throw('TypeError', 'Could not prevent extensions on object');
   }
   return O;
 }
 
-function Object_seal([O = Value.undefined]) {
+function* Object_seal([O = Value.undefined]) {
   if (Type(O) !== 'Object') {
     return O;
   }
 
-  const status = Q(SetIntegrityLevel(O, 'sealed'));
+  const status = Q(yield* SetIntegrityLevel(O, 'sealed'));
   if (status === Value.false) {
     return surroundingAgent.Throw('TypeError', 'Could not seal object');
   }
   return O;
 }
 
-function Object_setPrototypeOf([O = Value.undefined, proto = Value.undefined]) {
+function* Object_setPrototypeOf([O = Value.undefined, proto = Value.undefined]) {
   O = Q(RequireObjectCoercible(O));
   if (Type(proto) !== 'Object' && Type(proto) !== 'Null') {
     return surroundingAgent.Throw('TypeError', 'Prototype must be an Object or null');
@@ -241,17 +241,17 @@ function Object_setPrototypeOf([O = Value.undefined, proto = Value.undefined]) {
     return O;
   }
 
-  const status = Q(O.SetPrototypeOf(proto));
+  const status = Q(yield* O.SetPrototypeOf(proto));
   if (status === Value.false) {
     return surroundingAgent.Throw('TypeError', 'Could not set prototype of object');
   }
   return O;
 }
 
-function Object_values([O = Value.undefined]) {
-  const obj = Q(ToObject(O));
-  const nameList = Q(EnumerableOwnPropertyNames(obj, 'value'));
-  return CreateArrayFromList(nameList);
+function* Object_values([O = Value.undefined]) {
+  const obj = Q(yield* ToObject(O));
+  const nameList = Q(yield* EnumerableOwnPropertyNames(obj, 'value'));
+  return yield* CreateArrayFromList(nameList);
 }
 
 export function CreateObject(realmRec) {

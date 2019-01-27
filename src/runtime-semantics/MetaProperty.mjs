@@ -2,8 +2,8 @@ import { GetNewTarget } from '../abstract-ops/all.mjs';
 
 // 12.3.8.1 #sec-meta-properties-runtime-semantics-evaluation
 // NewTarget : `new` `.` `target`
-function Evaluate_NewTarget() {
-  return GetNewTarget();
+function* Evaluate_NewTarget() {
+  return yield* GetNewTarget();
 }
 
 // #prod-MetaProperty

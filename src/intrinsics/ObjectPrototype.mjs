@@ -17,19 +17,19 @@ import {
 import { Q, X } from '../completion.mjs';
 import { assignProps } from './Bootstrap.mjs';
 
-function ObjectProto_hasOwnProperty([V = Value.undefined], { thisValue }) {
-  const P = Q(ToPropertyKey(V));
-  const O = Q(ToObject(thisValue));
-  return HasOwnProperty(O, P);
+function* ObjectProto_hasOwnProperty([V = Value.undefined], { thisValue }) {
+  const P = Q(yield* ToPropertyKey(V));
+  const O = Q(yield* ToObject(thisValue));
+  return yield* HasOwnProperty(O, P);
 }
 
-function ObjectProto_isPrototypeOf([V = Value.undefined], { thisValue }) {
+function* ObjectProto_isPrototypeOf([V = Value.undefined], { thisValue }) {
   if (Type(V) !== 'Object') {
     return Value.false;
   }
-  const O = Q(ToObject(thisValue));
+  const O = Q(yield* ToObject(thisValue));
   while (true) {
-    V = Q(V.GetPrototypeOf());
+    V = Q(yield* V.GetPrototypeOf());
     if (Type(V) === 'Null') {
       return Value.false;
     }
@@ -39,29 +39,29 @@ function ObjectProto_isPrototypeOf([V = Value.undefined], { thisValue }) {
   }
 }
 
-function ObjectProto_propertyIsEnumerable([V = Value.undefined], { thisValue }) {
-  const P = Q(ToPropertyKey(V));
-  const O = Q(ToObject(thisValue));
-  const desc = Q(O.GetOwnProperty(P));
+function* ObjectProto_propertyIsEnumerable([V = Value.undefined], { thisValue }) {
+  const P = Q(yield* ToPropertyKey(V));
+  const O = Q(yield* ToObject(thisValue));
+  const desc = Q(yield* O.GetOwnProperty(P));
   if (Type(desc) === 'Undefined') {
     return Value.false;
   }
   return desc.Enumerable;
 }
 
-function ObjectProto_toLocaleString(argList, { thisValue }) {
+function* ObjectProto_toLocaleString(argList, { thisValue }) {
   const O = thisValue;
-  return Q(Invoke(O, new Value('toString')));
+  return Q(yield* Invoke(O, new Value('toString')));
 }
 
-function ObjectProto_toString(argList, { thisValue }) {
+function* ObjectProto_toString(argList, { thisValue }) {
   if (Type(thisValue) === 'Undefined') {
     return new Value('[object Undefined]');
   }
   if (Type(thisValue) === 'Null') {
     return new Value('[object Null]');
   }
-  const O = X(ToObject(thisValue));
+  const O = X(yield* ToObject(thisValue));
   const isArray = Q(IsArray(O));
   let builtinTag;
   if (isArray === Value.true) {
@@ -85,15 +85,15 @@ function ObjectProto_toString(argList, { thisValue }) {
   } else {
     builtinTag = 'Object';
   }
-  let tag = Q(Get(O, wellKnownSymbols.toStringTag));
+  let tag = Q(yield* Get(O, wellKnownSymbols.toStringTag));
   if (Type(tag) !== 'String') {
     tag = builtinTag;
   }
   return new Value(`[object ${tag.stringValue ? tag.stringValue() : tag}]`);
 }
 
-function ObjectProto_valueOf(argList, { thisValue }) {
-  return Q(ToObject(thisValue));
+function* ObjectProto_valueOf(argList, { thisValue }) {
+  return Q(yield* ToObject(thisValue));
 }
 
 export function CreateObjectPrototype(realmRec) {
@@ -109,8 +109,8 @@ export function CreateObjectPrototype(realmRec) {
     ['valueOf', ObjectProto_valueOf, 0],
   ]);
 
-  realmRec.Intrinsics['%ObjProto_toString%'] = X(Get(proto, new Value('toString')));
-  realmRec.Intrinsics['%ObjProto_valueOf%'] = X(Get(proto, new Value('valueOf')));
+  realmRec.Intrinsics['%ObjProto_toString%'] = proto.properties.get(new Value('toString')).Value;
+  realmRec.Intrinsics['%ObjProto_valueOf%'] = proto.properties.get(new Value('valueOf')).Value;
 
   realmRec.Intrinsics['%ObjectPrototype%'] = proto;
 }

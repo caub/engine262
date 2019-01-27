@@ -4,16 +4,14 @@ import {
 } from '../value.mjs';
 import {
   CreateBuiltinFunction,
-  SetFunctionLength,
-  SetFunctionName,
   ToNumber,
 } from '../abstract-ops/all.mjs';
-import { Q, X } from '../completion.mjs';
-import { BootstrapPrototype } from './Bootstrap.mjs';
+import { Q } from '../completion.mjs';
+import { BootstrapPrototype, setFunctionProps } from './Bootstrap.mjs';
 
 // 20.2.2.1 #sec-math.abs
-function Math_abs([x = Value.undefined]) {
-  x = Q(ToNumber(x));
+function* Math_abs([x = Value.undefined]) {
+  x = Q(yield* ToNumber(x));
   if (x.isNaN()) {
     return x;
   } else if (Object.is(x.numberValue(), -0)) {
@@ -29,8 +27,8 @@ function Math_abs([x = Value.undefined]) {
 }
 
 // 20.2.2.2 #sec-math.acos
-function Math_acos([x = Value.undefined]) {
-  x = Q(ToNumber(x));
+function* Math_acos([x = Value.undefined]) {
+  x = Q(yield* ToNumber(x));
   if (x.isNaN()) {
     return x;
   } else if (x.numberValue() > 1) {
@@ -68,7 +66,7 @@ export function CreateMath(realmRec) {
 
   // 20.2.2 #sec-function-properties-of-the-math-object
 
-  [
+  for (const [name, length] of [
     ['acosh', 1],
     ['asin', 1],
     ['asinh', 1],
@@ -102,23 +100,22 @@ export function CreateMath(realmRec) {
     ['tan', 1],
     ['tanh', 1],
     ['trunc', 1],
-  ].forEach(([name, length]) => {
+  ]) {
     // TODO(18): Math
-    const func = CreateBuiltinFunction(((args) => {
+    const func = CreateBuiltinFunction(function* MathWrapper([...args]) {
       for (let i = 0; i < args.length; i += 1) {
-        args[i] = Q(ToNumber(args[i])).numberValue();
+        args[i] = Q(yield* ToNumber(args[i])).numberValue();
       }
       return new Value(Math[name](...args));
-    }), [], realmRec);
-    X(SetFunctionName(func, new Value(name)));
-    X(SetFunctionLength(func, new Value(length)));
-    mathObj.DefineOwnProperty(new Value(name), Descriptor({
+    }, [], realmRec);
+    setFunctionProps(func, new Value(name), new Value(length));
+    mathObj.properties.set(new Value(name), Descriptor({
       Value: func,
       Writable: Value.true,
       Enumerable: Value.false,
       Configurable: Value.true,
     }));
-  });
+  }
 
   realmRec.Intrinsics['%Math%'] = mathObj;
 }

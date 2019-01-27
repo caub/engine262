@@ -6,6 +6,6 @@ import { Await, Q } from '../completion.mjs';
 // AwaitExpression : `await` UnaryExpression
 export function* Evaluate_AwaitExpression({ argument: UnaryExpression }) {
   const exprRef = yield* Evaluate(UnaryExpression);
-  const value = Q(GetValue(exprRef));
+  const value = Q(yield* GetValue(exprRef));
   return Q(yield* Await(value));
 }

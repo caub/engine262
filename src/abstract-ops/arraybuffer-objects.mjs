@@ -2,8 +2,8 @@ import {
   Assert,
   CreateByteDataBlock,
   CopyDataBlockBytes,
-  IsConstructor,
   OrdinaryCreateFromConstructor,
+  IsConstructor,
   SameValue,
   numericTypeInfo,
 } from './all.mjs';
@@ -18,8 +18,12 @@ import { Value, Type } from '../value.mjs';
 // 24.2 #sec-sharedarraybuffer-objects
 
 // 24.1.1.1 #sec-allocatearraybuffer
-export function AllocateArrayBuffer(constructor, byteLength) {
-  const obj = Q(OrdinaryCreateFromConstructor(constructor, '%ArrayBufferPrototype%', ['ArrayBufferData', 'ArrayBufferByteLength', 'ArrayBufferDetachKey']));
+export function* AllocateArrayBuffer(constructor, byteLength) {
+  const obj = Q(yield* OrdinaryCreateFromConstructor(
+    constructor,
+    '%ArrayBufferPrototype%',
+    ['ArrayBufferData', 'ArrayBufferByteLength', 'ArrayBufferDetachKey'],
+  ));
   Assert(byteLength.numberValue() >= 0);
   Assert(Number.isInteger(byteLength.numberValue()));
   const block = Q(CreateByteDataBlock(byteLength));
@@ -38,7 +42,7 @@ export function IsDetachedBuffer(arrayBuffer) {
 }
 
 // 24.1.1.3 #sec-detacharraybuffer
-export function DetachArrayBuffer(arrayBuffer, key) {
+export function* DetachArrayBuffer(arrayBuffer, key) {
   Assert(Type(arrayBuffer) === 'Object' && 'ArrayBufferData' in arrayBuffer && 'ArrayBufferByteLength' in arrayBuffer && 'ArrayBufferDetachKey' in arrayBuffer);
   Assert(IsSharedArrayBuffer(arrayBuffer) === Value.false);
   if (key === undefined) {
@@ -53,16 +57,16 @@ export function DetachArrayBuffer(arrayBuffer, key) {
 }
 
 // 24.1.1.4 #sec-clonearraybuffer
-export function CloneArrayBuffer(srcBuffer, srcByteOffset, srcLength, cloneConstructor) {
+export function* CloneArrayBuffer(srcBuffer, srcByteOffset, srcLength, cloneConstructor) {
   Assert(Type(srcBuffer) === 'Object' && 'ArrayBufferData' in srcBuffer);
   Assert(IsConstructor(cloneConstructor) === Value.true);
-  const targetBuffer = Q(AllocateArrayBuffer(cloneConstructor, srcLength));
+  const targetBuffer = Q(yield* AllocateArrayBuffer(cloneConstructor, srcLength));
   if (IsDetachedBuffer(srcBuffer)) {
     return surroundingAgent.Throw('TypeError', msg('BufferDetached'));
   }
   const srcBlock = srcBuffer.ArrayBufferData;
   const targetBlock = targetBuffer.ArrayBufferData;
-  CopyDataBlockBytes(targetBlock, new Value(0), srcBlock, srcByteOffset, srcLength);
+  yield* CopyDataBlockBytes(targetBlock, new Value(0), srcBlock, srcByteOffset, srcLength);
   return targetBuffer;
 }
 
@@ -110,7 +114,7 @@ const float64NaNLE = Object.freeze([0, 0, 0, 0, 0, 0, 248, 127]);
 const float64NaNBE = Object.freeze([127, 248, 0, 0, 0, 0, 0, 0]);
 
 // 24.1.1.7 #sec-numbertorawbytes
-export function NumberToRawBytes(type, value, isLittleEndian) {
+export function* NumberToRawBytes(type, value, isLittleEndian) {
   Assert(Type(isLittleEndian) === 'Boolean');
   isLittleEndian = isLittleEndian === Value.true;
   let rawBytes;
@@ -133,7 +137,7 @@ export function NumberToRawBytes(type, value, isLittleEndian) {
     const info = numericTypeInfo.get(type);
     const n = info.ElementSize;
     const convOp = info.ConversionOperation;
-    const intValue = X(convOp(value)).numberValue();
+    const intValue = X(yield* convOp(value)).numberValue();
     const dataViewType = type === 'Uint8C' ? 'Uint8' : type;
     throwawayDataView[`set${dataViewType}`](0, intValue, isLittleEndian);
     rawBytes = [...throwawayArray.subarray(0, n)];
@@ -142,7 +146,7 @@ export function NumberToRawBytes(type, value, isLittleEndian) {
 }
 
 // 24.1.1.8 #sec-setvalueinbuffer
-export function SetValueInBuffer(arrayBuffer, byteIndex, type, value, isTypedArray, order, isLittleEndian) {
+export function* SetValueInBuffer(arrayBuffer, byteIndex, type, value, isTypedArray, order, isLittleEndian) {
   byteIndex = byteIndex.numberValue();
   Assert(!IsDetachedBuffer(arrayBuffer));
   const info = numericTypeInfo.get(type);
@@ -155,7 +159,7 @@ export function SetValueInBuffer(arrayBuffer, byteIndex, type, value, isTypedArr
   if (isLittleEndian === undefined) {
     isLittleEndian = surroundingAgent.LittleEndian;
   }
-  const rawBytes = NumberToRawBytes(type, value, isLittleEndian);
+  const rawBytes = yield* NumberToRawBytes(type, value, isLittleEndian);
   // if (IsSharedArrayBuffer(arrayBuffer) === Value.true) {
   //
   // } else {
