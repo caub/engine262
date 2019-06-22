@@ -67,7 +67,9 @@ import {
   isAsyncGeneratorDeclaration,
 } from './ast.mjs';
 import { Evaluate_Module } from './evaluator.mjs';
-import { OutOfRange, msg } from './helpers.mjs';
+import {
+  OutOfRange, ValueMap, ValueSet, msg,
+} from './helpers.mjs';
 
 export function Value(value) {
   if (new.target !== undefined && new.target !== Value) {
@@ -75,28 +77,14 @@ export function Value(value) {
   }
 
   if (typeof value === 'string') {
-    if (stringMap.has(value)) {
-      return stringMap.get(value);
-    }
-    const s = new StringValue(value);
-    stringMap.set(value, s);
-    return s;
+    return new StringValue(value);
   }
 
   if (typeof value === 'number') {
-    // Redundant value === 0 added to work around a bug in some older versions
-    // of V8.
-    // Refs: https://github.com/nodejs/node/issues/25268
-    // Refs: https://crbug.com/903043
     if (value === 0 && Object.is(value, -0)) {
-      return negativeZero;
+      return Value.negativeZero;
     }
-    if (numberMap.has(value)) {
-      return numberMap.get(value);
-    }
-    const s = new NumberValue(value);
-    numberMap.set(value, s);
-    return s;
+    return new NumberValue(value);
   }
 
   if (typeof value === 'function') {
@@ -123,13 +111,6 @@ export class BooleanValue extends PrimitiveValue {
   }
 }
 
-Object.defineProperties(Value, {
-  undefined: { value: new UndefinedValue(), configurable: false, writable: false },
-  null: { value: new NullValue(), configurable: false, writable: false },
-  true: { value: new BooleanValue(true), configurable: false, writable: false },
-  false: { value: new BooleanValue(false), configurable: false, writable: false },
-});
-
 export class NumberValue extends PrimitiveValue {
   constructor(number) {
     super();
@@ -149,7 +130,13 @@ export class NumberValue extends PrimitiveValue {
   }
 }
 
-const negativeZero = new NumberValue(-0);
+Object.defineProperties(Value, {
+  undefined: { value: new UndefinedValue(), configurable: false, writable: false },
+  null: { value: new NullValue(), configurable: false, writable: false },
+  true: { value: new BooleanValue(true), configurable: false, writable: false },
+  false: { value: new BooleanValue(false), configurable: false, writable: false },
+  negativeZero: { value: new NumberValue(-0), configurable: false, writable: false },
+});
 
 export class StringValue extends PrimitiveValue {
   constructor(string) {
@@ -190,7 +177,6 @@ for (const name of [
 }
 Object.freeze(wellKnownSymbols);
 
-
 export class ObjectValue extends Value {
   constructor() {
     super();
@@ -198,7 +184,7 @@ export class ObjectValue extends Value {
     this.Prototype = undefined;
     this.Extensible = undefined;
     this.IsClassPrototype = false;
-    this.properties = new Map();
+    this.properties = new ValueMap();
   }
 
   GetPrototypeOf() {
@@ -1160,7 +1146,7 @@ export class ProxyExoticObjectValue extends ObjectValue {
     }
     const trapResultArray = Q(Call(trap, handler, [target]));
     const trapResult = Q(CreateListFromArrayLike(trapResultArray, ['String', 'Symbol']));
-    if (trapResult.some((e) => trapResult.indexOf(e) !== trapResult.lastIndexOf(e))) {
+    if (new ValueSet(trapResult).size !== trapResult.length) {
       return surroundingAgent.Throw('TypeError', '\'ownKeys\' on proxy: trap returned duplicate keys');
     }
     const extensibleTarget = Q(IsExtensible(target));
@@ -1180,7 +1166,7 @@ export class ProxyExoticObjectValue extends ObjectValue {
     if (extensibleTarget === Value.true && targetNonconfigurableKeys.length === 0) {
       return trapResult;
     }
-    const uncheckedResultKeys = new global.Set(trapResult);
+    const uncheckedResultKeys = new ValueSet(trapResult);
     for (const key of targetNonconfigurableKeys) {
       if (!uncheckedResultKeys.has(key)) {
         return surroundingAgent.Throw('TypeError', '\'ownKeys\' on proxy: trap result does not include non-configurable key');
@@ -1224,10 +1210,6 @@ export class SuperReference extends Reference {
     this.thisValue = thisValue;
   }
 }
-
-// TODO(devsnek): clean this up somehow
-const stringMap = new Map();
-const numberMap = new Map();
 
 export function Descriptor(O) {
   if (new.target === Descriptor) {
@@ -1486,7 +1468,7 @@ export class SourceTextModuleRecord extends CyclicModuleRecord {
     const envRec = env.EnvironmentRecord;
     for (const ie of module.ImportEntries) {
       const importedModule = X(HostResolveImportedModule(module, ie.ModuleRequest));
-      if (ie.ImportName === new Value('*')) {
+      if (ie.ImportName.stringValue() === '*') {
         const namespace = Q(GetModuleNamespace(importedModule));
         X(envRec.CreateImmutableBinding(ie.LocalName, Value.true));
         envRec.InitializeBinding(ie.LocalName, namespace);
@@ -1500,13 +1482,13 @@ export class SourceTextModuleRecord extends CyclicModuleRecord {
     }
     const code = module.ECMAScriptCode.body;
     const varDeclarations = VarScopedDeclarations_ModuleBody(code);
-    const declaredVarNames = [];
+    const declaredVarNames = new ValueSet();
     for (const d of varDeclarations) {
       for (const dn of BoundNames_VariableDeclaration(d).map(Value)) {
-        if (!declaredVarNames.includes(dn)) {
+        if (!declaredVarNames.has(dn)) {
           X(envRec.CreateMutableBinding(dn, Value.false));
           envRec.InitializeBinding(dn, Value.undefined);
-          declaredVarNames.push(dn);
+          declaredVarNames.add(dn);
         }
       }
     }

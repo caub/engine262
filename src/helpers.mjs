@@ -1,5 +1,10 @@
 import { surroundingAgent } from './engine.mjs';
-import { Value, Descriptor, AbstractModuleRecord } from './value.mjs';
+import {
+  Value,
+  Descriptor,
+  AbstractModuleRecord,
+  Type,
+} from './value.mjs';
 import { ToString, DefinePropertyOrThrow } from './abstract-ops/all.mjs';
 import { X } from './completion.mjs';
 import { inspect } from './api.mjs';
@@ -11,6 +16,109 @@ export class OutOfRange extends RangeError {
     this.detail = detail;
   }
 }
+
+export class ValueMap extends Map {
+  constructor(init) {
+    super();
+    if (init !== undefined) {
+      for (const [k, v] of init) {
+        this.add(k, v);
+      }
+    }
+  }
+
+  static convert(key) {
+    switch (Type(key)) {
+      case 'String':
+        return key.stringValue();
+      case 'Number':
+        if (key.numberValue() === 0 && Object.is(key.numberValue(), -0)) {
+          return key;
+        }
+        return key.numberValue();
+      default:
+        return key;
+    }
+  }
+
+  get(key) {
+    return super.get(ValueMap.convert(key));
+  }
+
+  set(key, value) {
+    return super.set(ValueMap.convert(key), value);
+  }
+
+  has(key) {
+    return super.has(ValueMap.convert(key));
+  }
+
+  delete(key) {
+    return super.delete(ValueMap.convert(key));
+  }
+
+  * keys() {
+    for (const [key] of this) {
+      yield key;
+    }
+  }
+
+  entries() {
+    return this[Symbol.iterator]();
+  }
+
+  * [Symbol.iterator]() {
+    for (const [key, value] of super.entries()) {
+      if (typeof key === 'string' || typeof key === 'number') {
+        yield [new Value(key), value];
+      } else {
+        yield [key, value];
+      }
+    }
+  }
+}
+
+export class ValueSet extends Set {
+  constructor(init) {
+    super();
+    if (init !== undefined) {
+      for (const item of init) {
+        this.add(item);
+      }
+    }
+  }
+
+  add(key) {
+    return super.add(ValueMap.convert(key));
+  }
+
+  has(key) {
+    return super.has(ValueMap.convert(key));
+  }
+
+  delete(key) {
+    return super.delete(ValueMap.convert(key));
+  }
+
+  keys() {
+    return this[Symbol.iterator]();
+  }
+
+  values() {
+    return this[Symbol.iterator]();
+  }
+
+  * [Symbol.iterator]() {
+    for (const key of super.values()) {
+      if (typeof key === 'string' || typeof key === 'number') {
+        yield new Value(key);
+      } else {
+        yield key;
+      }
+    }
+  }
+}
+
 
 export function unwind(iterator, maxSteps = 1) {
   let steps = 0;

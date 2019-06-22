@@ -77,7 +77,7 @@ export function* FunctionDeclarationInstantiation(func, argumentsList) {
   const code = func.ECMAScriptCode;
   const strict = func.Strict;
   const formals = func.FormalParameters;
-  const parameterNames = BoundNames_FormalParameters(formals).map(Value);
+  const parameterNames = BoundNames_FormalParameters(formals);
   const hasDuplicates = parameterNames.some((e) => parameterNames.indexOf(e) !== parameterNames.lastIndexOf(e));
   const simpleParameterList = IsSimpleParameterList_FormalParameters(formals);
   const hasParameterExpressions = ContainsExpression_FormalParameters(formals);
@@ -88,28 +88,28 @@ export function* FunctionDeclarationInstantiation(func, argumentsList) {
 
   switch (getFunctionBodyType(code)) {
     case 'FunctionBody':
-      varNames = VarDeclaredNames_FunctionBody(code.body.body).map(Value);
+      varNames = VarDeclaredNames_FunctionBody(code.body.body);
       varDeclarations = VarScopedDeclarations_FunctionBody(code.body.body);
-      lexicalNames = LexicallyDeclaredNames_FunctionBody(code.body.body).map(Value);
+      lexicalNames = LexicallyDeclaredNames_FunctionBody(code.body.body);
       break;
     case 'ConciseBody_ExpressionBody':
     case 'ConciseBody_FunctionBody':
     case 'AsyncConciseBody_AsyncFunctionBody':
     case 'AsyncConciseBody_ExpressionBody':
     case 'AsyncGeneratorBody':
-      varNames = VarDeclaredNames_ConciseBody(code.body).map(Value);
+      varNames = VarDeclaredNames_ConciseBody(code.body);
       varDeclarations = VarScopedDeclarations_ConciseBody(code.body);
-      lexicalNames = LexicallyDeclaredNames_ConciseBody(code.body).map(Value);
+      lexicalNames = LexicallyDeclaredNames_ConciseBody(code.body);
       break;
     case 'GeneratorBody':
-      varNames = VarDeclaredNames_GeneratorBody(code.body.body).map(Value);
+      varNames = VarDeclaredNames_GeneratorBody(code.body.body);
       varDeclarations = VarScopedDeclarations_GeneratorBody(code.body.body);
-      lexicalNames = LexicallyDeclaredNames_GeneratorBody(code.body.body).map(Value);
+      lexicalNames = LexicallyDeclaredNames_GeneratorBody(code.body.body);
       break;
     case 'AsyncFunctionBody':
-      varNames = VarDeclaredNames_AsyncFunctionBody(code.body.body).map(Value);
+      varNames = VarDeclaredNames_AsyncFunctionBody(code.body.body);
       varDeclarations = VarScopedDeclarations_AsyncFunctionBody(code.body.body);
-      lexicalNames = LexicallyDeclaredNames_AsyncFunctionBody(code.body.body).map(Value);
+      lexicalNames = LexicallyDeclaredNames_AsyncFunctionBody(code.body.body);
       break;
     default:
       throw new OutOfRange('FunctionDeclarationInstantiation', code);
@@ -133,16 +133,17 @@ export function* FunctionDeclarationInstantiation(func, argumentsList) {
   let argumentsObjectNeeded = true;
   if (func.ThisMode === 'lexical') {
     argumentsObjectNeeded = false;
-  } else if (parameterNames.includes(new Value('arguments'))) {
+  } else if (parameterNames.includes('arguments')) {
     argumentsObjectNeeded = false;
   } else if (hasParameterExpressions === false) {
-    if (functionNames.includes(new Value('arguments'))
-        || lexicalNames.includes(new Value('arguments'))) {
+    if (functionNames.includes('arguments')
+        || lexicalNames.includes('arguments')) {
       argumentsObjectNeeded = false;
     }
   }
 
-  for (const paramName of parameterNames) {
+  for (const paramNameRaw of parameterNames) {
+    const paramName = new Value(paramNameRaw);
     const alreadyDeclared = envRec.HasBinding(paramName);
     if (alreadyDeclared === Value.false) {
       X(envRec.CreateMutableBinding(paramName, false));
@@ -166,7 +167,7 @@ export function* FunctionDeclarationInstantiation(func, argumentsList) {
       X(envRec.CreateMutableBinding(new Value('arguments'), false));
     }
     envRec.InitializeBinding(new Value('arguments'), ao);
-    parameterBindings = [...parameterNames, new Value('arguments')];
+    parameterBindings = [...parameterNames, 'arguments'];
   } else {
     parameterBindings = parameterNames;
   }
@@ -185,8 +186,8 @@ export function* FunctionDeclarationInstantiation(func, argumentsList) {
     for (const n of varNames) {
       if (!instantiatedVarNames.includes(n)) {
         instantiatedVarNames.push(n);
-        X(envRec.CreateMutableBinding(n, false));
-        envRec.InitializeBinding(n, Value.undefined);
+        X(envRec.CreateMutableBinding(new Value(n), false));
+        envRec.InitializeBinding(new Value(n), Value.undefined);
       }
     }
     varEnv = env;
@@ -199,14 +200,14 @@ export function* FunctionDeclarationInstantiation(func, argumentsList) {
     for (const n of varNames) {
       if (!instantiatedVarNames.includes(n)) {
         instantiatedVarNames.push(n);
-        X(varEnvRec.CreateMutableBinding(n, false));
+        X(varEnvRec.CreateMutableBinding(new Value(n), false));
         let initialValue;
         if (!parameterBindings.includes(n) || functionNames.includes(n)) {
           initialValue = Value.undefined;
         } else {
-          initialValue = X(envRec.GetBindingValue(n, Value.false));
+          initialValue = X(envRec.GetBindingValue(new Value(n), Value.false));
         }
-        varEnvRec.InitializeBinding(n, initialValue);
+        varEnvRec.InitializeBinding(new Value(n), initialValue);
       }
     }
   }

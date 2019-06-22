@@ -195,7 +195,7 @@ export function ParseModule(sourceText, realm, hostDefined = {}) {
         localExportEntries.push(ee);
       } else {
         const ie = importEntries.find((e) => e.LocalName === ee.LocalName);
-        if (ie.ImportName === new Value('*')) {
+        if (ie.ImportName.stringValue() === '*') {
           // Assert: This is a re-export of an imported module namespace object.
           localExportEntries.push(ee);
         } else {
@@ -207,7 +207,7 @@ export function ParseModule(sourceText, realm, hostDefined = {}) {
           }));
         }
       }
-    } else if (ee.ImportName === new Value('*')) {
+    } else if (ee.ImportName.stringValue() === '*') {
       starExportEntries.push(ee);
     } else {
       indirectExportEntries.push(ee);

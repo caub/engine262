@@ -12,7 +12,7 @@ import {
   isStatementListItem,
 } from '../ast.mjs';
 import { Value } from '../value.mjs';
-import { OutOfRange } from '../helpers.mjs';
+import { OutOfRange, ValueSet } from '../helpers.mjs';
 
 // 15.2.1.10 #sec-module-semantics-static-semantics-modulerequests
 //   ModuleItemList : ModuleItemList ModuleItem
@@ -20,7 +20,7 @@ import { OutOfRange } from '../helpers.mjs';
 // (implicit)
 //   ModuleItemList : ModuleItem
 export function ModuleRequests_ModuleItemList(ModuleItemList) {
-  const moduleNames = new Set();
+  const moduleNames = new ValueSet();
   for (const ModuleItem of ModuleItemList) {
     for (const additionalName of ModuleRequests_ModuleItem(ModuleItem)) {
       moduleNames.add(additionalName);
