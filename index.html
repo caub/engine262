@@ -115,7 +115,9 @@
       }
 
       mode.addEventListener('change', () => {
+        saveState();
         respawn();
+        runEvaluation();
       });
 
       respawn();
