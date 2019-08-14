@@ -32,7 +32,7 @@
           </select>
         </fieldset>
 
-        <textarea id="input" autocomplete="off">print('Hello, World!');</textarea>
+        <textarea id="input" autocomplete="off"></textarea>
         <button type="button" id="run">Evaluate</button>
       </section>
 
@@ -46,9 +46,22 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.48.2/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.48.2/mode/javascript/javascript.min.js"></script>
     <script>
+      const parameters = new URLSearchParams(document.location.hash.slice(1));
+      function saveState() {
+        const state = new URLSearchParams();
+        state.set('code', btoa(editor.getValue()));
+        state.set('features', [...features].join(','));
+        state.set('mode', mode.value);
+        document.location.hash = state.toString();
+      }
+
       let featuresPopulated = false;
-      const features = new Set();
+      const features = new Set(parameters.has('features') ? parameters.get('features').split(',') : []);
       let worker;
+
+      if (parameters.has('mode')) {
+        mode.value = parameters.get('mode');
+      }
 
       function respawn() {
         if (worker) {
@@ -75,13 +88,16 @@
                   const li = document.createElement('li');
                   const input = document.createElement('input');
                   input.type = 'checkbox';
+                  input.checked = features.has(name);
                   input.addEventListener('click', () => {
                     if (input.checked) {
                       features.add(name);
                     } else {
                       features.delete(name);
                     }
+                    saveState();
                     respawn();
+                    runEvaluation();
                   });
                   const label = document.createElement('label');
                   label.appendChild(input);
@@ -102,16 +118,18 @@
 
       respawn();
 
-      function runEvaluation(src) {
-        output.value = '';
-        worker.postMessage({ input: src });
-      }
-
       let onChangeTimer = null;
       const editor = CodeMirror.fromTextArea(input, {
         lineNumbers: true,
         mode: 'javascript',
       });
+
+      function runEvaluation() {
+        output.value = '';
+        saveState();
+        worker.postMessage({ input: editor.getValue() });
+      }
+
       editor.on('change', () => {
         if (!autoevaluate.checked) return;
         if (onChangeTimer !== null) {
@@ -120,14 +138,16 @@
         onChangeTimer = setTimeout(
           () => {
             onChangeTimer = null;
-            runEvaluation(editor.getValue());
+            runEvaluation();
           },
           500
         );
       });
 
+      editor.setValue(parameters.has('code') ? atob(parameters.get('code')) : 'print(\'Hello, World!\');');
+
       run.addEventListener('click', () => {
-        runEvaluation(editor.getValue());
+        runEvaluation();
       });
 
       loading.close();
