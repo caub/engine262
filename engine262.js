@@ -43165,40 +43165,37 @@
             return `${tag}{}`;
           }
 
+          const cache = [];
+
+          for (const key of keys) {
+            let C = value.GetOwnProperty(key);
+            Assert(!(C instanceof AbruptCompletion), "");
+
+            if (C instanceof Completion) {
+              C = C.Value;
+            }
+
+            if (C.Enumerable === Value.true) {
+              cache.push([innerInspect(key, false), innerInspect(C.Value)]);
+            }
+          }
+
           const isArray = IsArray(value) === Value.true;
           let out = isArray ? '[' : `${tag}{`;
 
-          if (keys.length > 5) {
+          if (cache.length > 5) {
             indent += 1;
-
-            for (const key of keys) {
-              let C = value.GetOwnProperty(key);
-              Assert(!(C instanceof AbruptCompletion), "");
-
-              if (C instanceof Completion) {
-                C = C.Value;
-              }
-
-              out = `${out}\n${'  '.repeat(indent)}${innerInspect(key, false)}: ${innerInspect(C.Value)},`;
-            }
-
+            cache.forEach(c => {
+              out = `${out}\n${'  '.repeat(indent)}${c[0]}: ${c[1]},`;
+            });
             indent -= 1;
             return `${out}\n${'  '.repeat(indent)}${isArray ? ']' : '}'}`;
           } else {
             const oc = compact;
             compact = true;
-
-            for (const key of keys) {
-              let C = value.GetOwnProperty(key);
-              Assert(!(C instanceof AbruptCompletion), "");
-
-              if (C instanceof Completion) {
-                C = C.Value;
-              }
-
-              out = `${out} ${innerInspect(key, false)}: ${innerInspect(C.Value)},`;
-            }
-
+            cache.forEach(c => {
+              out = `${out} ${c[0]}: ${c[1]},`;
+            });
             compact = oc;
             return `${out.slice(0, -1)} ${isArray ? ']' : '}'}`;
           }
