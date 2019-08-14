@@ -45,11 +45,13 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.48.2/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.48.2/mode/javascript/javascript.min.js"></script>
+    <script src="https://unpkg.com/lz-string@1.4.4/libs/base64-string.js"></script>
+    <script src="https://unpkg.com/lz-string@1.4.4/libs/lz-string.min.js"></script>
     <script>
       const parameters = new URLSearchParams(document.location.hash.slice(1));
       function saveState() {
         const state = new URLSearchParams();
-        state.set('code', btoa(editor.getValue()));
+        state.set('code', LZString.compressToBase64(editor.getValue()));
         state.set('features', [...features].join(','));
         state.set('mode', mode.value);
         document.location.hash = state.toString();
@@ -144,7 +146,9 @@
         );
       });
 
-      editor.setValue(parameters.has('code') ? atob(parameters.get('code')) : 'print(\'Hello, World!\');');
+      editor.setValue(parameters.has('code')
+        ? LZString.decompressFromBase64(parameters.get('code'))
+        : 'print(\'Hello, World!\');');
 
       run.addEventListener('click', () => {
         runEvaluation();
