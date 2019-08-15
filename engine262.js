@@ -570,7 +570,7 @@
   } // #prod-ImportCall
 
   function isImportCall(node) {
-    return node.type === 'CallExpression' && node.callee.type === 'Import';
+    return node.type === 'ImportExpression';
   } // Used in #prod-UpdateExpression
 
   function isActualUpdateExpression(node) {
@@ -9373,7 +9373,7 @@
   // ImportCall : `import` `(` AssignmentExpression `)`
 
   function* Evaluate_ImportCall({
-    arguments: [AssignmentExpression]
+    source: AssignmentExpression
   }) {
     let referencingScriptOrModule = GetActiveScriptOrModule();
     Assert(!(referencingScriptOrModule instanceof AbruptCompletion), "");
