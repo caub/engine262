@@ -557,6 +557,14 @@
     return node.type === 'MetaProperty';
   } // #prod-NewTarget
 
+  function isNewTarget(node) {
+    return isMetaProperty(node) && node.meta.name === 'new' && node.property.name === 'target';
+  } // https://tc39.es/proposal-import-meta/#prod-ImportMeta
+
+  function isImportMeta(node) {
+    return isMetaProperty(node) && node.meta.name === 'import' && node.property.name === 'meta';
+  } // Used in #prod-MemberExpression and #prod-NewExpression
+
   function isActualNewExpression(node) {
     return node.type === 'NewExpression';
   } // Used in #prod-CallExpression and #prod-CallMemberExpression
@@ -5987,6 +5995,7 @@
     label: '??',
     binop: 0
   };
+  const skipWhiteSpace = /(?:\s|\/\/.*|\/\*[^]*?\*\/)*/g;
   const Parser = acorn.Parser.extend(P => class Parse262 extends P {
     constructor(options = {}, source) {
       super({ ...options,
@@ -6053,6 +6062,56 @@
       }
 
       return super.getTokenFromCode(code);
+    }
+
+    parseStatement(context, topLevel, exports) {
+      if (this.type === acorn.tokTypes._import && surroundingAgent.feature('import.meta')) {
+        // eslint-disable-line no-underscore-dangle
+        skipWhiteSpace.lastIndex = this.pos;
+        const skip = skipWhiteSpace.exec(this.input);
+        const next = this.pos + skip[0].length;
+        const nextCh = this.input.charCodeAt(next);
+
+        if (nextCh === 40 || nextCh === 46) {
+          // '(' '.'
+          const node = this.startNode();
+          return this.parseExpressionStatement(node, this.parseExpression());
+        }
+      }
+
+      return super.parseStatement(context, topLevel, exports);
+    }
+
+    parseExprImport() {
+      const node = this.startNode();
+      const meta = this.parseIdent(true);
+
+      switch (this.type) {
+        case acorn.tokTypes.parenL:
+          return this.parseDynamicImport(node);
+
+        case acorn.tokTypes.dot:
+          if (!surroundingAgent.feature('import.meta')) {
+            return this.unexpected();
+          }
+
+          if (!(this.inModule || this.allowImportExportAnywhere)) {
+            return this.unexpected();
+          }
+
+          this.next();
+          node.meta = meta;
+          node.property = this.parseIdent(true);
+
+          if (node.property.name !== 'meta' || this.containsEsc) {
+            return this.unexpected();
+          }
+
+          return this.finishNode(node, 'MetaProperty');
+
+        default:
+          return this.unexpected();
+      }
     }
 
     parseSubscripts(base, startPos, startLoc, noCalls) {
@@ -6349,6 +6408,7 @@
       Realm: realm,
       Environment: Value.undefined,
       Namespace: Value.undefined,
+      ImportMeta: Value.undefined,
       Async: body.containsTopLevelAwait ? Value.true : Value.false,
       AsyncEvaluating: Value.false,
       TopLevelCapability: Value.undefined,
@@ -10519,13 +10579,51 @@
 
   function Evaluate_NewTarget() {
     return GetNewTarget();
+  } // https://tc39.es/proposal-import-meta/#sec-meta-properties
+  // ImportMeta : `import` `.` `meta`
+
+
+  function Evaluate_ImportMeta() {
+    const module = GetActiveScriptOrModule();
+    Assert(module instanceof AbstractModuleRecord, "module instanceof AbstractModuleRecord");
+    let importMeta = module.ImportMeta;
+
+    if (importMeta === Value.undefined) {
+      importMeta = ObjectCreate(Value.null);
+      let importMetaValues = HostGetImportMetaProperties(module);
+      Assert(!(importMetaValues instanceof AbruptCompletion), "");
+
+      if (importMetaValues instanceof Completion) {
+        importMetaValues = importMetaValues.Value;
+      }
+
+      for (const p of importMetaValues) {
+        Assert(!(CreateDataProperty(importMeta, p.Key, p.Value) instanceof AbruptCompletion), "");
+      }
+
+      Assert(!(HostFinalizeImportMeta(importMeta, module) instanceof AbruptCompletion), "");
+      module.ImportMeta = importMeta;
+      return importMeta;
+    } else {
+      Assert(Type(importMeta) === 'Object', "Type(importMeta) === 'Object'");
+      return importMeta;
+    }
   } // #prod-MetaProperty
   // MetaProperty : NewTarget
 
 
-  function* Evaluate_MetaProperty() {
+  function* Evaluate_MetaProperty(MetaProperty) {
     // eslint-disable-line require-yield
-    return Evaluate_NewTarget();
+    switch (true) {
+      case isNewTarget(MetaProperty):
+        return Evaluate_NewTarget();
+
+      case isImportMeta(MetaProperty):
+        return Evaluate_ImportMeta();
+
+      default:
+        throw new OutOfRange('Evaluate_MetaProperty', MetaProperty);
+    }
   }
 
   const {
@@ -13753,7 +13851,7 @@
         return yield* Evaluate_TaggedTemplate(Expression);
 
       case isMetaProperty(Expression):
-        return yield* Evaluate_MetaProperty();
+        return yield* Evaluate_MetaProperty(Expression);
 
       case isActualNewExpression(Expression):
         return yield* Evaluate_NewExpression(Expression);
@@ -14045,6 +14143,7 @@
     constructor(init) {
       super(init);
       ({
+        ImportMeta: this.ImportMeta,
         ECMAScriptCode: this.ECMAScriptCode,
         ImportEntries: this.ImportEntries,
         LocalExportEntries: this.LocalExportEntries,
@@ -35134,6 +35233,9 @@
   }, {
     name: 'TopLevelAwait',
     url: 'https://github.com/tc39/proposal-top-level-await'
+  }, {
+    name: 'import.meta',
+    url: 'https://github.com/tc39/proposal-import-meta'
   }].map(Object.freeze));
   class Agent {
     constructor(options = {}) {
@@ -35434,6 +35536,42 @@
       FinishDynamicImport(referencingScriptOrModule, specifier, promiseCapability, completion);
     }, []);
     return new NormalCompletion(Value.undefined);
+  } // https://tc39.es/proposal-import-meta/#sec-hostgetimportmetaproperties
+
+  function HostGetImportMetaProperties(moduleRecord) {
+    const realm = surroundingAgent.currentRealmRecord;
+
+    if (realm.HostDefined.getImportMetaProperties) {
+      let _val2 = realm.HostDefined.getImportMetaProperties(moduleRecord.HostDefined.public);
+
+      Assert(!(_val2 instanceof AbruptCompletion), "");
+
+      if (_val2 instanceof Completion) {
+        _val2 = _val2.Value;
+      }
+
+      return _val2;
+    }
+
+    return [];
+  } // https://tc39.es/proposal-import-meta/#sec-hostfinalizeimportmeta
+
+  function HostFinalizeImportMeta(importMeta, moduleRecord) {
+    const realm = surroundingAgent.currentRealmRecord;
+
+    if (realm.HostDefined.finalizeImportMeta) {
+      let _val3 = realm.HostDefined.finalizeImportMeta(importMeta, moduleRecord.HostDefined.public);
+
+      Assert(!(_val3 instanceof AbruptCompletion), "");
+
+      if (_val3 instanceof Completion) {
+        _val3 = _val3.Value;
+      }
+
+      return _val3;
+    }
+
+    return Value.undefined;
   }
 
   // 9.4.4 #sec-arguments-exotic-objects
@@ -36944,13 +37082,15 @@
       return Value.null;
     }
 
-    const ec = [...surroundingAgent.executionContextStack].reverse().find(e => e.ScriptOrModule !== undefined);
+    for (let i = surroundingAgent.executionContextStack.length - 1; i >= 0; i -= 1) {
+      const e = surroundingAgent.executionContextStack[i];
 
-    if (!ec) {
-      return Value.null;
+      if (e.ScriptOrModule !== undefined) {
+        return e.ScriptOrModule;
+      }
     }
 
-    return ec.ScriptOrModule;
+    return Value.null;
   } // 8.3.2 #sec-resolvebinding
 
   function ResolveBinding(name, env, strict) {
